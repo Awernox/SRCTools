@@ -1,0 +1,61 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "SRCTools",
+  "mainBinaryName": "SRCTools",
+  "version": "1.0.0",
+  "identifier": "com.srctools.app",
+  "build": {
+    "beforeDevCommand": "npm run vite:dev",
+    "devUrl": "http://localhost:5173",
+    "beforeBuildCommand": "npm run vite:build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "SRCTools",
+        "width": 1480,
+        "height": 940,
+        "minWidth": 1040,
+        "minHeight": 660,
+        "resizable": true,
+        "fullscreen": false,
+        "center": true,
+        "decorations": true,
+        "theme": "Dark",
+        "backgroundColor": "#0A0A0B",
+        "visible": false,
+        "dragDropEnabled": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' data: https:; media-src 'self' https:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost; frame-src https://www.youtube-nocookie.com https://player.twitch.tv https://player.vimeo.com https://streamable.com",
+      "assetProtocol": {
+        "enable": false
+      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis", "msi"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "copyright": "SRCTools",
+    "category": "DeveloperTool",
+    "shortDescription": "Speedrun.com moderator toolkit",
+    "longDescription": "SRCTools is an advanced desktop toolkit for Speedrun.com moderators: moderation queue, video validation, run analysis, bulk actions and statistics.",
+    "windows": {
+      "nsis": {
+        "installMode": "perMachine",
+        "languages": ["English", "Russian", "Ukrainian", "Spanish"],
+        "displayLanguageSelector": true
+      }
+    }
+  },
+  "plugins": {}
+}

@@ -1,0 +1,20 @@
+# Generated / build artifacts
+/dist
+/node_modules
+/src-tauri/target
+/src-tauri/gen/schemas
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+
+# Local env — never commit credentials
+.env
+.env.local
+.env.*.local

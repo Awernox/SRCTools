@@ -1,0 +1,93 @@
+# Standalone crate: the parent directory contains an unrelated Cargo workspace,
+# and an empty [workspace] table keeps SRCTools out of it.
+[workspace]
+
+[package]
+name = "srctools"
+version = "1.0.0"
+description = "SRCTools — advanced Speedrun.com moderator toolkit"
+authors = ["SRCTools"]
+edition = "2021"
+rust-version = "1.82"
+license = "MIT"
+# The update check reads this and nothing else: `src/update.rs` turns it into
+# `api.github.com/repos/OWNER/NAME/releases/latest`. Replace OWNER with the
+# real account once the repository exists — until then the check reports
+# itself as unconfigured rather than claiming the app is up to date.
+repository = "https://github.com/OWNER/srctools"
+default-run = "srctools"
+
+[lib]
+name = "srctools_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[[bin]]
+name = "srctools"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+# Every image SRCTools shows (game covers, avatars, video thumbnails) is a
+# remote https URL, so the local asset protocol is deliberately not enabled.
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+tauri-plugin-clipboard-manager = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-notification = "2"
+
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+tokio = { version = "1", features = ["rt-multi-thread", "sync", "time", "macros"] }
+reqwest = { version = "0.12", default-features = false, features = [
+    "json",
+    "gzip",
+    "brotli",
+    "rustls-tls",
+    "http2",
+    "charset",
+] }
+
+rusqlite = { version = "0.32", features = ["bundled", "chrono", "serde_json"] }
+keyring = { version = "3", features = ["windows-native", "apple-native", "sync-secret-service"] }
+
+chrono = { version = "0.4", features = ["serde"] }
+url = "2"
+thiserror = "2"
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-appender = "0.2"
+parking_lot = "0.12"
+once_cell = "1"
+regex = "1"
+csv = "1"
+# For handing a custom notification sound to the webview as bytes. Already in
+# the tree via reqwest and tauri, so this costs no extra build.
+base64 = "0.22"
+rand = "0.8"
+discord-rich-presence = "1.1.0"
+
+# Toasts that report their own click. `tauri-plugin-notification` drops the
+# activation callback on desktop, so clicking its notification leads nowhere;
+# a new-run alert has to be able to open the run it is about. Already in the
+# tree as a transitive dependency of that plugin, so this costs no extra build.
+[target.'cfg(windows)'.dependencies]
+tauri-winrt-notification = "0.7"
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+incremental = false
+
+[profile.dev]
+incremental = true

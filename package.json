@@ -1,0 +1,42 @@
+{
+  "name": "srctools",
+  "private": true,
+  "version": "1.0.0",
+  "description": "SRCTools — advanced Speedrun.com moderator toolkit",
+  "type": "module",
+  "scripts": {
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "build:windows": "tauri build --bundles nsis,msi",
+    "vite:dev": "vite",
+    "vite:build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "tauri": "tauri",
+    "icons": "tauri icon ./src-tauri/icons/icon.png"
+  },
+  "dependencies": {
+    "@tanstack/react-virtual": "3.14.9",
+    "@tauri-apps/api": "2.11.1",
+    "@tauri-apps/plugin-clipboard-manager": "2.3.2",
+    "@tauri-apps/plugin-dialog": "2.7.2",
+    "@tauri-apps/plugin-notification": "2.3.3",
+    "@tauri-apps/plugin-opener": "2.5.4",
+    "clsx": "2.1.1",
+    "lucide-react": "1.31.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "zustand": "5.0.14"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.11.4",
+    "@types/react": "18.3.24",
+    "@types/react-dom": "18.3.7",
+    "@vitejs/plugin-react": "4.7.0",
+    "typescript": "5.9.2",
+    "vite": "5.4.20"
+  },
+  "allowScripts": {
+    "esbuild@0.21.5": true
+  }
+}
