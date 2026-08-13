@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Info, X, XCircle } from 'lucide-react';
 
 import { Modal } from './ui';
+import { useT } from '../i18n';
 import { useUi, type ToastKind } from '../store/ui';
 
 const ICONS: Record<ToastKind, typeof Info> = {
@@ -20,6 +21,7 @@ const ICONS: Record<ToastKind, typeof Info> = {
 };
 
 export function Toasts() {
+  const t = useT();
   const toasts = useUi((state) => state.toasts);
   const dismiss = useUi((state) => state.dismiss);
 
@@ -57,7 +59,7 @@ export function Toasts() {
               type="button"
               className="toast__close"
               onClick={() => dismiss(toast.id)}
-              aria-label="Dismiss"
+              aria-label={t('common.dismiss')}
             >
               <X size={13} />
             </button>

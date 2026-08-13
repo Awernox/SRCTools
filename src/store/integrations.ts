@@ -24,6 +24,7 @@ import {
   type WebhookStatus,
 } from '../ipc';
 import { videoStatusInfo, videoStatusLabel } from '../format';
+import { t } from '../i18n';
 import type { RunSummary, VideoStatus } from '../types';
 import { useSession, type Settings } from './session';
 import { ui } from './ui';
@@ -148,15 +149,14 @@ export function postWebhook(events: WebhookEvent[]): void {
 
   const wanted = events.filter((event) => settings[TOGGLE[event.kind]] === true);
 
-  // An empty list means every game, so the filter only ever narrows. A run
-  // whose game id is unknown is dropped when a filter is set: the moderator
-  // asked for specific games, and posting an unattributable run would be the
-  // one thing they said they did not want.
+  // "All games" posts whatever the event toggles allowed. Otherwise only the
+  // games switched on, and a run whose game id is unknown is dropped: the
+  // moderator named the games they wanted, and posting an unattributable run
+  // would be the one thing they said they did not want.
   const games = settings.webhookGames;
-  const scoped =
-    games.length === 0
-      ? wanted
-      : wanted.filter((event) => event.gameId != null && games.includes(event.gameId));
+  const scoped = settings.webhookAllGames
+    ? wanted
+    : wanted.filter((event) => event.gameId != null && games.includes(event.gameId));
 
   if (scoped.length === 0) return;
 
@@ -168,7 +168,7 @@ export function postWebhook(events: WebhookEvent[]): void {
     .catch((err: unknown) => {
       if (!posted) return;
       posted = false;
-      ui.warning('Discord webhook failed', errorText(err));
+      ui.warning(t('open.webhookFailed'), errorText(err));
     });
 }
 
@@ -194,9 +194,7 @@ export function runEvent(
   run: RunSummary,
   detail?: string | null,
 ): WebhookEvent {
-  const category = run.levelName
-    ? `${run.categoryName ?? 'Unknown category'} — ${run.levelName}`
-    : run.categoryName;
+  const category = run.categoryName ?? 'Unknown category';
 
   return {
     kind,
@@ -204,7 +202,9 @@ export function runEvent(
     gameId: run.gameId,
     runner: run.playerLabel,
     category,
+    levelName: run.levelName,
     time: run.primaryDisplay,
+    durationSeconds: run.primarySeconds,
     status: STATUS[kind],
     videoUrl: run.videoUrls[0] ?? null,
     runUrl: run.weblink,

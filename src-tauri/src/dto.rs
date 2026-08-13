@@ -17,7 +17,7 @@ use crate::util::{format_duration, sanitize_line, sanitize_text};
 use crate::video::VideoCheck;
 
 /// A run as shown in the queue table.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RunSummary {
     pub id: String,
@@ -40,6 +40,10 @@ pub struct RunSummary {
     pub status: String,
     pub examiner_id: Option<String>,
     pub rejection_reason: Option<String>,
+    /// ISO-8601 timestamp of the verdict — when a moderator verified or rejected
+    /// the run. Absent while the run is still pending, and absent on old runs
+    /// the API never recorded one for.
+    pub verify_date: Option<String>,
     /// Date the run was played (`YYYY-MM-DD`), when set.
     pub date: Option<String>,
     /// ISO-8601 submission timestamp, when set.
@@ -165,6 +169,7 @@ impl RunSummary {
                 .as_ref()
                 .and_then(|s| s.reason.as_deref())
                 .map(|r| sanitize_text(r, 2000)),
+            verify_date: run.status.as_ref().and_then(|s| s.verify_date.clone()),
             date: run.date.clone(),
             submitted: run.submitted.clone(),
             comment: run

@@ -11,7 +11,8 @@ import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { save } from '@tauri-apps/plugin-dialog';
 import { openUrl } from '@tauri-apps/plugin-opener';
 
-import { isSafeExternalUrl } from './format';
+import { isSafeExternalUrl, plural } from './format';
+import { t } from './i18n';
 import { records } from './ipc';
 import type { ExportPayload } from './types';
 import { ui } from './store/ui';
@@ -19,29 +20,33 @@ import { ui } from './store/ui';
 /** Opens an http(s) URL in the default browser. Refuses anything else. */
 export async function openExternal(url: string | null | undefined): Promise<void> {
   if (!url) {
-    ui.warning('No link to open');
+    ui.warning(t('open.noLink'));
     return;
   }
   if (!isSafeExternalUrl(url)) {
-    ui.warning(
-      'That link was not opened',
-      'It is not an http or https address, so SRCTools will not hand it to Windows. Copy it and inspect it yourself if you need to.',
-    );
+    ui.warning(t('open.refused'), t('open.refusedHint'));
     return;
   }
   try {
     await openUrl(url);
   } catch (err) {
-    ui.error('Could not open the link', err);
+    ui.error(t('open.failed'), err);
   }
 }
 
-export async function copyToClipboard(text: string, label = 'Copied'): Promise<void> {
+/**
+ * Copies text and says so.
+ *
+ * The default label is resolved inside the function rather than in the parameter
+ * list: a default value is evaluated once at module load, which would freeze it
+ * in whichever language happened to be active then.
+ */
+export async function copyToClipboard(text: string, label?: string): Promise<void> {
   try {
     await writeText(text);
-    ui.success(label);
+    ui.success(label ?? t('common.copied'));
   } catch (err) {
-    ui.error('Could not copy that', err);
+    ui.error(t('open.copyFailed'), err);
   }
 }
 
@@ -53,8 +58,13 @@ export async function copyToClipboard(text: string, label = 'Copied'): Promise<v
  */
 export async function saveExport(payload: ExportPayload): Promise<boolean> {
   const extension = payload.filename.split('.').pop() ?? 'txt';
-  const filterName =
-    extension === 'csv' ? 'CSV spreadsheet' : extension === 'json' ? 'JSON document' : 'Text file';
+  const filterName = t(
+    extension === 'csv'
+      ? 'open.filter.csv'
+      : extension === 'json'
+        ? 'open.filter.json'
+        : 'open.filter.text',
+  );
 
   try {
     const path = await save({
@@ -64,10 +74,10 @@ export async function saveExport(payload: ExportPayload): Promise<boolean> {
     if (!path) return false;
 
     await records.writeExport(path, payload.content);
-    ui.success('Export saved', `${payload.rowCount} row${payload.rowCount === 1 ? '' : 's'}`);
+    ui.success(t('open.exportSaved'), plural(payload.rowCount, 'row'));
     return true;
   } catch (err) {
-    ui.error('Could not save the export', err);
+    ui.error(t('open.exportFailed'), err);
     return false;
   }
 }

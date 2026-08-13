@@ -7,6 +7,8 @@
  * are the base layer those overrides are merged onto.
  */
 
+import type { TranslationKey } from './i18n';
+
 export type ShortcutAction =
   | 'approve'
   | 'reject'
@@ -30,12 +32,27 @@ export type ShortcutAction =
   | 'gotoStats'
   | 'gotoSettings';
 
+/** Section a shortcut is listed under. Also a catalogue-key suffix. */
+export type ShortcutGroup = 'moderation' | 'navigation' | 'selection' | 'application';
+
+export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
+  'moderation',
+  'navigation',
+  'selection',
+  'application',
+];
+
 export interface ShortcutDefinition {
   action: ShortcutAction;
   binding: string;
-  label: string;
-  description: string;
-  group: 'Moderation' | 'Navigation' | 'Selection' | 'Application';
+  /**
+   * Catalogue keys rather than finished text: the same definition is rendered
+   * by the Settings list, the help window and the command palette, so a
+   * literal here would leave all three in English.
+   */
+  labelKey: TranslationKey;
+  descriptionKey: TranslationKey;
+  group: ShortcutGroup;
   /** True when rebinding would break a platform convention. */
   fixed?: boolean;
 }
@@ -51,151 +68,151 @@ export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
   {
     action: 'approve',
     binding: 'a',
-    label: 'Verify run',
-    description: 'Verify the focused run. Asks for confirmation unless you turn that off.',
-    group: 'Moderation',
+    labelKey: 'shortcut.approve',
+    descriptionKey: 'shortcut.approve.desc',
+    group: 'moderation',
   },
   {
     action: 'reject',
     binding: 'r',
-    label: 'Reject run',
-    description: 'Open the rejection dialog for the focused run. A reason is required.',
-    group: 'Moderation',
+    labelKey: 'shortcut.reject',
+    descriptionKey: 'shortcut.reject.desc',
+    group: 'moderation',
   },
   {
     action: 'openVideo',
     binding: 'v',
-    label: 'Open video',
-    description: 'Open the run’s first video link in your browser.',
-    group: 'Moderation',
+    labelKey: 'shortcut.openVideo',
+    descriptionKey: 'shortcut.openVideo.desc',
+    group: 'moderation',
   },
   {
     action: 'openRun',
     binding: 'o',
-    label: 'Open on Speedrun.com',
-    description: 'Open the focused run’s page in your browser.',
-    group: 'Moderation',
+    labelKey: 'shortcut.openRun',
+    descriptionKey: 'shortcut.openRun.desc',
+    group: 'moderation',
   },
   {
     action: 'openDetail',
     binding: 'enter',
-    label: 'Inspect run',
-    description: 'Open the detail panel for the focused run.',
-    group: 'Moderation',
+    labelKey: 'shortcut.openDetail',
+    descriptionKey: 'shortcut.openDetail.desc',
+    group: 'moderation',
   },
   {
     action: 'toggleSelect',
     binding: 'space',
-    label: 'Select run',
-    description: 'Add or remove the focused run from the bulk selection.',
-    group: 'Selection',
+    labelKey: 'shortcut.toggleSelect',
+    descriptionKey: 'shortcut.toggleSelect.desc',
+    group: 'selection',
   },
   {
     action: 'next',
     binding: 'n',
-    label: 'Next run',
-    description: 'Move focus to the next run.',
-    group: 'Navigation',
+    labelKey: 'shortcut.next',
+    descriptionKey: 'shortcut.next.desc',
+    group: 'navigation',
   },
   {
     action: 'previous',
     binding: 'p',
-    label: 'Previous run',
-    description: 'Move focus to the previous run.',
-    group: 'Navigation',
+    labelKey: 'shortcut.previous',
+    descriptionKey: 'shortcut.previous.desc',
+    group: 'navigation',
   },
   {
     action: 'fastReview',
     binding: 'f',
-    label: 'Fast Review',
-    description: 'Enter Fast Review, which advances automatically after each action.',
-    group: 'Navigation',
+    labelKey: 'shortcut.fastReview',
+    descriptionKey: 'shortcut.fastReview.desc',
+    group: 'navigation',
   },
   {
     action: 'escape',
     binding: 'escape',
-    label: 'Close / cancel',
-    description: 'Close the open panel, dialog or menu.',
-    group: 'Application',
+    labelKey: 'shortcut.escape',
+    descriptionKey: 'shortcut.escape.desc',
+    group: 'application',
     fixed: true,
   },
   {
     action: 'selectAll',
     binding: 'ctrl+a',
-    label: 'Select all',
-    description: 'Select every run currently shown.',
-    group: 'Selection',
+    labelKey: 'shortcut.selectAll',
+    descriptionKey: 'shortcut.selectAll.desc',
+    group: 'selection',
   },
   {
     action: 'clearSelection',
     binding: 'ctrl+shift+a',
-    label: 'Clear selection',
-    description: 'Deselect every run.',
-    group: 'Selection',
+    labelKey: 'shortcut.clearSelection',
+    descriptionKey: 'shortcut.clearSelection.desc',
+    group: 'selection',
   },
   {
     action: 'refresh',
     binding: 'ctrl+r',
-    label: 'Refresh',
-    description: 'Reload the current view from Speedrun.com.',
-    group: 'Application',
+    labelKey: 'shortcut.refresh',
+    descriptionKey: 'shortcut.refresh.desc',
+    group: 'application',
   },
   {
     action: 'search',
     binding: 'ctrl+f',
-    label: 'Filter runs',
-    description: 'Focus the filter box in the queue toolbar.',
-    group: 'Application',
+    labelKey: 'shortcut.search',
+    descriptionKey: 'shortcut.search.desc',
+    group: 'application',
   },
   {
     action: 'commandPalette',
     binding: 'ctrl+k',
-    label: 'Command palette',
-    description: 'Search games, runs, pages and commands.',
-    group: 'Application',
+    labelKey: 'shortcut.commandPalette',
+    descriptionKey: 'shortcut.commandPalette.desc',
+    group: 'application',
     fixed: true,
   },
   {
     action: 'help',
     binding: '?',
-    label: 'Keyboard shortcuts',
-    description: 'Show this window.',
-    group: 'Application',
+    labelKey: 'shortcut.help',
+    descriptionKey: 'shortcut.help.desc',
+    group: 'application',
   },
   {
     action: 'gotoDashboard',
     binding: 'g d',
-    label: 'Go to Dashboard',
-    description: 'Press G then D.',
-    group: 'Navigation',
+    labelKey: 'shortcut.gotoDashboard',
+    descriptionKey: 'shortcut.gotoDashboard.desc',
+    group: 'navigation',
   },
   {
     action: 'gotoQueue',
     binding: 'g q',
-    label: 'Go to Queue',
-    description: 'Press G then Q.',
-    group: 'Navigation',
+    labelKey: 'shortcut.gotoQueue',
+    descriptionKey: 'shortcut.gotoQueue.desc',
+    group: 'navigation',
   },
   {
     action: 'gotoHistory',
     binding: 'g h',
-    label: 'Go to History',
-    description: 'Press G then H.',
-    group: 'Navigation',
+    labelKey: 'shortcut.gotoHistory',
+    descriptionKey: 'shortcut.gotoHistory.desc',
+    group: 'navigation',
   },
   {
     action: 'gotoStats',
     binding: 'g s',
-    label: 'Go to Statistics',
-    description: 'Press G then S.',
-    group: 'Navigation',
+    labelKey: 'shortcut.gotoStats',
+    descriptionKey: 'shortcut.gotoStats.desc',
+    group: 'navigation',
   },
   {
     action: 'gotoSettings',
     binding: 'g ,',
-    label: 'Go to Settings',
-    description: 'Press G then comma.',
-    group: 'Navigation',
+    labelKey: 'shortcut.gotoSettings',
+    descriptionKey: 'shortcut.gotoSettings.desc',
+    group: 'navigation',
   },
 ];
 

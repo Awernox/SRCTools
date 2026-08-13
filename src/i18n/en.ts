@@ -33,6 +33,47 @@ export const en = {
   'nav.signedIn': 'Signed in',
   'nav.notConnected': 'Not connected',
   'nav.addKey': 'Add your API key',
+  'nav.landmark': 'Main',
+
+  // ------------------------------------------------------- chrome (bars)
+  'chrome.searchPlaceholder': 'Search…',
+  'chrome.searchHint': 'Search games, runs and commands',
+  'chrome.refresh': 'Refresh this page',
+  'chrome.refresh.hint': 'Reloads from Speedrun.com.',
+  'chrome.status.noKey': 'No API key',
+  'chrome.status.connected': 'Connected as {name}',
+  'chrome.status.unconfirmed': 'Key stored, identity not confirmed',
+  'chrome.status.loaded': '{count} loaded',
+  'chrome.status.selected': '{count} selected',
+  'chrome.status.checking': 'Checking videos {done}/{total}',
+  'chrome.status.updated': 'Updated {when}',
+  'chrome.status.fetched': 'Queue fetched {when}',
+  'chrome.status.budget': 'API budget: {used} of {capacity} requests used',
+  'chrome.status.budget.hint':
+    'SRCTools paces its own requests so Speedrun.com never rate-limits you. Adjust this in Settings.',
+  'chrome.status.database': 'Database: {path}',
+
+  // ----------------------------------------------------------- command palette
+  // The page names come from `nav.*`, so a page is called the same thing here as
+  // it is in the sidebar; only the one-line descriptions live in this block.
+  'palette.placeholder': 'Type a page, game or run…',
+  'palette.searchAria': 'Command palette search',
+  'palette.desc.dashboard': 'What is waiting for you today',
+  'palette.desc.queue': 'Runs to review',
+  'palette.desc.games': 'Your moderated games',
+  'palette.desc.history': 'Actions taken from this machine',
+  'palette.desc.stats': 'Your moderation numbers',
+  'palette.desc.settings': 'Appearance, keys, credentials',
+  'palette.refresh': 'Refresh current view',
+  'palette.refreshSub': 'Reload from Speedrun.com',
+  'palette.checkVideos': 'Check videos in the queue',
+  'palette.runsLoaded': '{runs} loaded',
+  'palette.nothingLoaded': 'Nothing loaded yet',
+  'palette.gameFallback': 'Game',
+  'palette.noMatches': 'No matches for “{query}”.',
+  'palette.navigate': 'navigate',
+  'palette.openHint': 'open',
+  'palette.toggleHint': '{app} · Ctrl+K to toggle',
 
   // ------------------------------------------------------------------- common
   'common.refresh': 'Refresh',
@@ -54,6 +95,8 @@ export const en = {
   'common.yes': 'Yes',
   'common.no': 'No',
   'common.notStated': 'not stated',
+  'common.unknownGame': 'Unknown game',
+  'common.unknownCategory': 'Unknown category',
   'common.on': 'On',
   'common.off': 'Off',
   'common.default': 'Default',
@@ -75,6 +118,8 @@ export const en = {
   'common.perMinute': '{count}/min',
   'common.showMore': 'Show more',
   'common.showLess': 'Show less',
+  'common.loadingAria': 'Loading',
+  'common.loadFailed': 'Could not load this',
 
   // ------------------------------------------------------------------- units
   // One entry per plural category the language uses. English needs `one` and
@@ -117,6 +162,14 @@ export const en = {
   'unit.expiredEntry.other': '{count} expired entries',
   'unit.batch.one': '{count} batch',
   'unit.batch.other': '{count} batches',
+  'unit.critical.one': '{count} critical',
+  'unit.critical.other': '{count} criticals',
+  'unit.warning.one': '{count} warning',
+  'unit.warning.other': '{count} warnings',
+  'unit.note.one': '{count} note',
+  'unit.note.other': '{count} notes',
+  'unit.row.one': '{count} row',
+  'unit.row.other': '{count} rows',
 
   // -------------------------------------------------------- relative time
   'time.justNow': 'just now',
@@ -157,6 +210,7 @@ export const en = {
   // ------------------------------------------------------------------ actions
   'action.verify': 'Verify',
   'action.reject': 'Reject',
+  'action.skip': 'Skip',
   'action.deleteRun': 'Delete run',
   'action.openVideo': 'Open video',
   'action.openOnSrc': 'Open on Speedrun.com',
@@ -346,26 +400,287 @@ export const en = {
   'queue.title': 'Review queue',
   'queue.empty': 'Nothing pending',
   'queue.emptyHint': 'Every run in the games you moderate has been handled.',
+  'queue.noMatch': 'No runs match these filters',
+  'queue.noMatchHint':
+    '{count} runs are loaded, but none match the filter box, video state or duplicate toggle.',
+  'queue.clearFilters': 'Clear filters',
+  'queue.loading': 'Loading your review queue…',
+  'queue.noKey': 'Not connected to Speedrun.com',
+  'queue.noKeyHint':
+    'The review queue comes from your moderator account. Add your API key in Settings to load it.',
+  'queue.openSettings': 'Open Settings',
   'queue.filterPlaceholder': 'Filter loaded runs',
-  'queue.colVideo': 'Video',
-  'queue.colGame': 'Game',
-  'queue.colCategory': 'Category',
-  'queue.colPlayer': 'Runner',
-  'queue.colTime': 'Time',
-  'queue.colSubmitted': 'Submitted',
-  'queue.colStatus': 'Status',
-  // Shared with the dashboard's recent-submissions table, which shows the same
-  // columns without the queue's selection and video machinery.
+  'queue.filterAria': 'Filter loaded runs',
+  'queue.filterHint': 'Filters the runs already loaded. Does not fetch anything.',
+  'queue.status.newHint': 'Runs waiting for a decision',
+  'queue.status.verifiedHint': 'Runs that have already been accepted',
+  'queue.status.rejectedHint': 'Runs that have already been turned down',
+  // One set of column names, shared by the queue table, the "visible columns"
+  // menu, the Settings list and the dashboard's recent-submissions table.
+  'queue.col.video': 'Video',
   'queue.col.game': 'Game',
   'queue.col.category': 'Category',
   'queue.col.runner': 'Runner',
   'queue.col.time': 'Time',
   'queue.col.submitted': 'Submitted',
   'queue.col.status': 'Status',
+  'queue.sortBy': 'Sort by {column}',
+  'queue.selectRun': 'Select the run by {player}',
   'queue.noSubmitDate': 'No submission date',
-  'queue.truncated': 'Showing the first {count} runs. Narrow the filter to see the rest.',
+  'queue.truncated':
+    'Speedrun.com returned the maximum this fetch asked for, so there are probably more pending runs than the {count} shown. Narrow the filter, or raise the queue size in Settings.',
+  'queue.noVideoLink': 'This run has no video link',
+  'queue.nothingToReview': 'Nothing to review',
+  'queue.nothingToReviewHint': 'Fast Review needs at least one run in the list.',
+
+  // Video state: the filter dropdown, and the badge in the video column.
+  'queue.video.aria': 'Filter by video state',
+  'queue.video.any': 'Any video state',
+  'queue.video.problem': 'Video looks wrong',
+  'queue.video.ok': 'Video plays',
+  'queue.video.unverified': 'Video not checked',
+  'queue.video.none': 'No video link',
+  'queue.video.textOnly': 'Text instead of a link',
+  'queue.video.textOnlyHint': 'The runner wrote: “{text}”. There is no URL to check.',
+  'queue.video.textBadge': 'Text',
+  'queue.video.missing': 'No video submitted',
+  'queue.video.missingHint':
+    'This run has no video link. Whether that matters depends on the game’s rules.',
+  'queue.video.notCheckedHint':
+    'SRCTools has not verified this link yet. That says nothing about the video.',
+
+  'queue.duplicates': 'Duplicates',
+  'queue.duplicates.hint': 'Only runs sharing a video',
+  'queue.duplicates.detail':
+    'A shared link is a flag, not a verdict. Re-uploads and multi-category runs legitimately share one.',
+  'queue.dup': 'dup',
+  'queue.dup.label': 'Shares a video with {runs}',
+  'queue.dup.detail':
+    'A flag only. Re-uploads and multi-category runs legitimately share a link.',
+
+  'queue.checking': 'Checking {done}/{total}',
+  'queue.checkVideos': 'Check videos',
+  'queue.checkVideos.hint': 'Check every video link',
+  'queue.checkVideos.detail':
+    'Asks each provider whether the video is viewable. A failed check is reported as “not checked”, never as a problem.',
+  'queue.fastReview': 'Fast Review',
+  'queue.fastReviewHint': 'Review runs one at a time, advancing automatically',
+  'queue.columns': 'Choose visible columns',
+  'queue.columns.heading': 'Visible columns',
+  'queue.export': 'Export these runs',
+  'queue.export.heading': 'Export {runs} ({scope})',
+  'queue.export.scopeSelected': 'selected',
+  'queue.export.scopeShown': 'shown',
+  'queue.export.csv': 'Comma-separated values (.csv)',
+  'queue.export.json': 'JSON (.json)',
+  'queue.exportFailed': 'Could not build the export',
+  'queue.reset': 'Reset filters',
+  'queue.reset.hint': 'Reset every filter',
+  'queue.reset.detail': 'Returns to pending runs in your own games.',
+
+  // Right-click menu on a row.
+  'queue.row.heading': 'Run',
+  'queue.row.inspect': 'Inspect run',
+  'queue.row.openVideo': 'Open video',
+  'queue.row.openSrc': 'Open on Speedrun.com',
+  'queue.row.copyId': 'Copy run id',
+  'queue.row.idCopied': 'Run id copied',
+  'queue.row.verify': 'Verify run',
+  'queue.row.reject': 'Reject run…',
+  'queue.row.delete': 'Delete permanently…',
+
+  // Selection bar above the table.
+  'queue.bulk.selected': '{runs} selected',
+  'queue.bulk.verifyAll': 'Verify all',
+  'queue.bulk.rejectAll': 'Reject all…',
+  'queue.bulk.deleteAll': 'Delete…',
+  'queue.bulk.deleteHint': 'Permanently removes these runs from Speedrun.com',
+  'queue.bulk.copyIds': 'Copy ids',
+  'queue.bulk.copyIdsHint': 'Copy the selected run ids',
+  'queue.bulk.idsCopied': '{count} run ids copied',
+
+  // ------------------------------------------------------------ bulk progress
+  // Whole sentences per action and tense: the count governs the verb ending in
+  // Slavic languages, so "Verifying" + " 3/10" cannot be assembled from parts.
+  'bulk.progress.verify': 'Verifying {done}/{total}',
+  'bulk.progress.verifyDone': 'Verified {done}/{total}',
+  'bulk.progress.reject': 'Rejecting {done}/{total}',
+  'bulk.progress.rejectDone': 'Rejected {done}/{total}',
+  'bulk.progress.delete': 'Deleting {done}/{total}',
+  'bulk.progress.deleteDone': 'Deleted {done}/{total}',
+  'bulk.counts': '{succeeded} succeeded · {failed} failed',
+  'bulk.stopping': 'Stopping…',
+  'bulk.stopAfter': 'Stop after this run',
+  'bulk.failed.verify': '{runs} could not be verified',
+  'bulk.failed.reject': '{runs} could not be rejected',
+  'bulk.failed.delete': '{runs} could not be deleted',
+  'bulk.copyDetails': 'Copy details',
+  'bulk.retry': 'Retry these',
+  'bulk.retryCount': 'Retry ({count} look retryable)',
+  'bulk.failureListCopied': 'Failure list copied',
+
+  // ------------------------------------------------------- moderation actions
+  // What the moderator is told after acting — the confirmations that come first
+  // live in `dialog.*`. `runLine` describes the run being acted on and has two
+  // forms so a run with no time does not leave a dangling preposition.
+  'mod.runLine': '{game} — {category} by {runner}',
+  'mod.runLineWithTime': '{game} — {category} by {runner} in {time}',
+  'mod.verifyFailed': 'Could not verify the run',
+  'mod.reasonRequired': 'A reason is required',
+  'mod.reasonRequiredHint': 'Speedrun.com shows your reason to the runner.',
+  'mod.rejectFailed': 'Could not reject the run',
+  'mod.deleteFailed': 'Could not delete the run',
+  'mod.bulkRunning': 'A bulk operation is already running',
+  // `{operation}` is one of the `history.op.*` names, so a batch is called the
+  // same thing in the toast as it is in the history log.
+  'mod.bulk.finished': '{operation} finished',
+  'mod.bulk.failed': '{operation} failed',
+  'mod.bulk.partly': '{operation} finished with failures',
+  'mod.bulk.couldNotRun': '{operation} could not run',
+  'mod.stopping': 'Stopping after the current run',
+  'mod.stopFailed': 'Could not stop the batch',
+  'mod.retryFinished': 'Retry finished',
+  'mod.retryFailed': 'Retry could not run',
+  'mod.unreportedFailure': 'Failed for an unreported reason.',
+  'mod.noFailures': 'No failures.',
+
+  // ------------------------------------------------------------- run detail
+  // The panel a decision is made on. The wording separates three things and the
+  // translations must keep them apart: what Speedrun.com actually said, what it
+  // did not say (the "did not …" strings, which describe a gap in the data and
+  // never a fault in the run), and heuristic flags, which are always phrased as
+  // something to look at rather than something that is wrong.
+  'detail.title': 'Run detail',
+  'detail.loadFailed': 'Could not load this run',
+  'detail.noGameName': 'Speedrun.com did not name the game',
+  'detail.reload': 'Reload this run',
+  'detail.reloadHint': 'Re-reads the run, its rules and its videos.',
+  'detail.close': 'Close the detail panel',
+  'detail.closeEsc': 'Close (Esc)',
+  'detail.reject': 'Reject…',
+  'detail.delete': 'Delete…',
+  'detail.copyId': 'Copy the run id',
+  'detail.copyIdHint': 'Useful when reporting a run to another moderator.',
+  'detail.deleteTooltip': 'Delete permanently',
+  'detail.deleteHint':
+    'Removes the run from Speedrun.com entirely. Rejecting is almost always the right action instead.',
+  'detail.openRunOnSrc': 'Open this run on Speedrun.com',
+
+  'detail.analysis.title': 'Automated checks',
+  'detail.analysis.noFindings':
+    'No check raised anything. That is not a verdict either — the checks only cover what the API and the video providers can tell SRCTools.',
+  'detail.analysis.findingsSummary': '{findings} — none of them decide anything',
+  'detail.analysis.unverifiable':
+    'Some checks could not run because the data they need was not available. Missing information is not evidence of a problem.',
+
+  'detail.video.title': 'Video',
+  'detail.video.more': 'More',
+  'detail.video.less': 'Less',
+  'detail.video.showDetails': 'Show titles, durations and thumbnails',
+  'detail.video.hideDetails': 'Hide the details',
+  'detail.video.checkAgain': 'Check again',
+  'detail.video.checkAgainHint': 'Asks the provider again, ignoring the cached answer.',
+  'detail.video.checkAgainAria': 'Check the videos again',
+  'detail.video.noLink':
+    'No video was submitted with this run. Whether a video is required depends on this game’s rules, shown below.',
+  'detail.video.noLinkWithText':
+    'No video link was submitted. The runner wrote: “{text}”. Whether that is acceptable depends on this game’s rules.',
+  'detail.video.notCheckedYet':
+    '{links} submitted, not checked yet. Use “Check again” above, or open them yourself.',
+  'detail.video.cached': 'Cached answer',
+  'detail.video.cachedHint': 'Checked {when}. Use “Check again” to ask the provider now.',
+  'detail.video.cachedBadge': 'cached',
+  'detail.video.linkCopied': 'Video link copied',
+  'detail.video.playerTitle': '{provider} player',
+  'detail.video.titleField': 'Title',
+  'detail.video.channel': 'Channel',
+  'detail.video.length': 'Length',
+  'detail.video.uploaded': 'Uploaded',
+  'detail.video.checked': 'Checked',
+  'detail.video.noTitle': 'The provider did not return a title',
+  'detail.video.noChannel': 'The provider did not return a channel',
+  'detail.video.noDuration': 'The provider did not return a duration',
+  'detail.video.noUploadDate': 'The provider did not return an upload date',
+  'detail.video.shorter': 'Shorter than the submitted time',
+  'detail.video.shorterHint':
+    'Trimmed uploads, split videos and separate load-removal footage all do this legitimately. It is a flag, not a fault.',
+  'detail.video.shorterBadge': 'shorter than the run',
+
+  'detail.facts.title': 'Submission',
+  'detail.facts.played': 'Played',
+  'detail.facts.noPlayDate': 'No play date was given',
+  'detail.facts.noSubmitTime': 'Speedrun.com did not report a submission time',
+  'detail.facts.guest': 'Guest submission',
+  'detail.facts.guestHint':
+    'This runner has no Speedrun.com account, so there is no history to compare against.',
+  'detail.facts.guestBadge': 'guest',
+  'detail.facts.platform': 'Platform',
+  'detail.facts.noPlatform': 'No platform was recorded',
+  'detail.facts.region': 'Region',
+  'detail.facts.noRegion': 'No region was recorded',
+  'detail.facts.emulator': 'Emulator',
+  'detail.facts.noEmulator': 'Speedrun.com did not say whether an emulator was used',
+  'detail.facts.emulated': 'Emulated',
+  'detail.facts.subcategory': 'Subcategory',
+  'detail.facts.runId': 'Run id',
+  'detail.facts.comment': 'Runner’s comment',
+  'detail.facts.previouslyRejected': 'Previously rejected: {reason}',
+  'detail.facts.unlabelledValue': 'Speedrun.com did not label this value',
+
+  'detail.rules.title': 'Rules',
+  'detail.rules.unavailable':
+    'The game and category could not be loaded, so their rules are not shown. Check them on Speedrun.com before deciding.',
+  'detail.rules.gamePage': 'Game page',
+  'detail.rules.videoRequired': 'Video required',
+  'detail.rules.videoYes': 'Videos are required',
+  'detail.rules.videoNo': 'Videos are not required',
+  'detail.rules.emulators': 'Emulators',
+  'detail.rules.emulatorsYes': 'Emulators are allowed',
+  'detail.rules.emulatorsNo': 'Emulators are not allowed',
+  'detail.rules.verification': 'Verification',
+  'detail.rules.verificationYes': 'Runs need verification',
+  'detail.rules.verificationNo': 'Runs are auto-verified',
+  'detail.rules.released': 'Released {date}',
+  'detail.rules.noRules': 'This category has no written rules on Speedrun.com.',
+  'detail.rules.noCategory': 'The category for this run could not be loaded.',
+  'detail.rules.flagNotStated': '{label}: not stated',
+  'detail.rules.flagNotStatedHint': 'Speedrun.com did not report this setting.',
+
+  'detail.runner.title': 'Runner history',
+  'detail.runner.noHistory':
+    'No history is available for this runner. Guests have no account to look up, so this is expected for guest submissions.',
+  'detail.runner.loadFailed':
+    '{name}’s history could not be loaded: {error}. That is a fetch problem, not something about the runner.',
+  'detail.runner.profile': 'Profile',
+  'detail.runner.onRecord': 'On record',
+  'detail.runner.recordSummary': '{runs} — {verified} verified, {rejected} rejected',
+  'detail.runner.memberSince': 'Member since',
+  'detail.runner.previousBest': 'Previous best',
+  'detail.runner.noPreviousBest': 'No earlier run in this category was found',
+  'detail.runner.faster': '{percent} faster than their previous best.',
+  'detail.runner.slower': '{percent} slower than their previous best.',
+  'detail.runner.bigJump':
+    'A jump this large is worth watching the video for — it is also exactly what a genuine breakthrough looks like.',
+  'detail.runner.noOtherRuns':
+    'No other runs by this runner were returned. A first submission is not a problem in itself.',
+
+  'detail.leaderboard.title': 'Leaderboard',
+  'detail.leaderboard.loadFailed':
+    'The leaderboard could not be loaded: {error}. Compare the time on Speedrun.com before deciding.',
+  'detail.leaderboard.empty': 'No leaderboard to compare against',
+  'detail.leaderboard.emptyHint':
+    'This category has no ranked runs yet, or it does not use a leaderboard.',
+  'detail.leaderboard.place': '#',
+  'detail.leaderboard.date': 'Date',
+
+  'detail.absent': 'Speedrun.com did not provide this',
+  'detail.notProvided': 'Not provided',
 
   // -------------------------------------------------------------------- games
+  // The rule flags here are tri-state on purpose. Speedrun.com omits a setting
+  // a game has not configured rather than returning false, so "not stated" must
+  // stay clearly distinct from "no" in every language — a moderator reading an
+  // omission as a rule is the failure this wording exists to prevent.
   'games.title': 'Games',
   'games.pendingCount': '{count} pending',
   'games.noPending': 'Nothing pending',
@@ -378,28 +693,179 @@ export const en = {
   'games.unpin': 'Unpin',
   'games.rules': 'Submission rules',
   'games.searchSrc': 'Search Speedrun.com',
+  'games.noKeyHint': 'Add your API key in Settings to see the games you moderate.',
+  'games.loading': 'Loading the games you moderate…',
+  'games.subtitle': '{games} you moderate. Open one to read its rules.',
+  'games.filterPlaceholder': 'Filter your games, or search all of Speedrun.com',
+  'games.searchTooShort': 'Type at least two characters',
+  'games.searchTooShortHint': 'Speedrun.com rejects shorter searches.',
+  'games.searchFailed': 'Could not search Speedrun.com',
+  'games.noneModerated': 'No moderated games',
+  'games.noneModeratedHint':
+    'Speedrun.com does not list you as a moderator on any game. You can still search for a game to read its rules.',
+  'games.yourGames': 'Games you moderate',
+  'games.matchesInYours': '{matches} in your games',
+  'games.noLocalMatch': 'Nothing of yours matches “{query}”',
+  'games.noLocalMatchHint':
+    'Search Speedrun.com to look it up anyway — you can read any game’s rules, even one you do not moderate.',
+  'games.srcResults': 'Speedrun.com results',
+  'games.noRemoteMatch': 'No games matched',
+  'games.noRemoteMatchHint': 'Speedrun.com found nothing for “{query}”.',
+  'games.moderatorBadge': 'Moderator',
+  'games.allGames': 'All games',
+  'games.loadFailed': 'Could not load this game',
+  'games.loadFailedEmpty': 'Speedrun.com returned nothing for this game id.',
+  'games.pinned': 'Pinned',
+  'games.pinnedHint': '{game} is now in the sidebar.',
+  'games.unpinned': 'Unpinned',
+  'games.unpinnedHint': '{game} was removed from the sidebar.',
+  'games.pinFailed': 'Could not update your pinned games',
+  // The subtitle is built from whole clauses joined with " · " rather than from
+  // sentence fragments, so a translation can reorder or reword each part.
+  'games.noAbbreviation': 'No abbreviation',
+  'games.released': 'released {date}',
+  'games.youAreRole': 'you are a {role} here',
+  'games.roleModerator': 'moderator',
+  'games.notModerating': 'you do not moderate this game',
+  'games.notModeratorNotice':
+    'You are not listed as a moderator of this game, so verifying or rejecting its runs will be refused by Speedrun.com. The rules below are still readable.',
+  'games.flag.video': 'Video required',
+  'games.flag.verification': 'Verification required',
+  'games.flag.emulators': 'Emulators allowed',
+  'games.flag.romhack': 'Romhack',
+  'games.flag.milliseconds': 'Milliseconds shown',
+  'games.defaultTiming': 'Default timing',
+  'games.timingMethods': 'Timing methods',
+  'games.structure': 'Rules and structure',
+  'games.notStatedTitle': 'Not stated',
+  'games.notStatedDetail':
+    'Speedrun.com did not return this setting for this game. That is not the same as “no”.',
+  'games.noCategories': 'No categories loaded',
+  'games.noCategoriesHint':
+    'Speedrun.com returned no categories for this game, or the request failed.',
+  'games.misc': 'Misc',
+  'games.noCategoryRules':
+    'This category has no rules text on Speedrun.com. That is not the same as having no rules — check the game’s forum or the moderators.',
+  'games.noLevels': 'No individual levels',
+  'games.noLevelsHint': 'This game has no level leaderboards.',
+  'games.noLevelRules': 'No level-specific rules were given.',
+  'games.noVariables': 'No variables',
+  'games.noVariablesHint':
+    'This game defines no subcategories or extra fields on its submissions.',
+  'games.var.name': 'Variable',
+  'games.var.scope': 'Scope',
+  'games.var.values': 'Values',
+  'games.var.required': 'Required',
 
   // ------------------------------------------------------------- fast review
-  'fast.title': 'Fast Review',
-  'fast.exit': 'Leave Fast Review',
-  'fast.focusMode': 'Focus mode',
-  'fast.focusModeHint': 'Show only the runner, game, time, video status and warnings.',
-  'fast.remaining': '{count} left',
+  // Fast Review only removes the mouse from the loop; it decides nothing. The
+  // wording must not imply otherwise — "handled" and "decided" describe what the
+  // moderator did, and the held-outcome copy exists to say plainly that the
+  // action has already reached Speedrun.com.
+  'fast.exit': 'Leave Fast Review (Esc)',
+  'fast.exitShort': 'Exit',
+  'fast.position': 'Run {index} of {total}',
+  'fast.handled': '{runs} handled',
+  'fast.nothingDecided': 'Nothing decided yet',
+  'fast.decisionsThisSession': '{decisions} this session',
+  // Lower case: these sit next to a key cap as a caption, not as a button.
+  'fast.hint.verify': 'verify',
+  'fast.hint.reject': 'reject',
+  'fast.hint.skip': 'skip',
+  'fast.hint.video': 'video',
+  'fast.lastRun': 'That was the last run',
+  'fast.lastRunHint': 'Nothing further in this filtered queue.',
+  'fast.noVideoLink': 'This run has no video link',
+  'fast.noVideoLinkHint': 'Nothing was submitted to open.',
   'fast.done': 'Queue cleared',
-  'fast.doneHint': 'Every run in the current view has been handled.',
-  'fast.quickReasons': 'Quick reasons',
-  'fast.autoAdvance': 'Auto-advance',
-  'fast.watchVideo': 'Watch video',
-  'fast.warnings': 'Warnings',
-  'fast.noWarnings': 'Nothing flagged',
+  'fast.doneHint':
+    '{runs} handled in this session. Refresh the queue to pull in anything submitted since.',
+  'fast.nothingToReview': 'Nothing to review',
+  'fast.nothingToReviewHint': 'No runs match the filters you left the queue on.',
+  'fast.backToQueue': 'Back to the queue',
+  'fast.submitted': 'submitted {when}',
+  'fast.notChecked': 'Not checked',
+  'fast.watch': 'Watch',
+  'fast.checksFailed':
+    'The checks could not be loaded ({error}). That says nothing about this run — review it on Speedrun.com before deciding.',
+  'fast.categoryRules': '{category} rules',
+  'fast.heldTitle': '{outcome} — {game}',
+  'fast.heldHint': '{category} by {runner}. Next run in {seconds}.',
+  'fast.continueNow': 'Continue now',
+  'fast.openRun': 'Open the run',
+  'fast.alreadyTold':
+    'Speedrun.com has already been told. This pause only exists so you can see what happened.',
 
   // ------------------------------------------------------------------ history
   'history.title': 'History',
-  'history.empty': 'No recorded actions',
+  'history.subtitle': 'Everything SRCTools has done from this machine, kept locally.',
+  'history.tab.actions': 'Actions',
+  'history.tab.batches': 'Bulk operations',
+  'history.notice':
+    'This is SRCTools’ own log, written when an action succeeds or fails here. Moderation done in a browser or on another machine is not part of it, and Speedrun.com does not publish a history that could be imported.',
+  'history.searchPlaceholder': 'Search game, category, runner, reason or run id',
+  'history.action.verify': 'Verified',
+  'history.action.reject': 'Rejected',
+  'history.action.delete': 'Deleted',
+  'history.actionFailed': '{action} — failed',
+  'history.outcome.any': 'Any result',
+  'history.outcome.success': 'Succeeded',
+  'history.outcome.failed': 'Failed',
+  'history.from': 'From',
+  'history.to': 'To',
+  'history.clear': 'Clear…',
   'history.clearTitle': 'Clear the local history?',
+  'history.clearMessage':
+    'This erases SRCTools’ own record of what you have done on this machine, including the bulk operation log. It changes nothing on Speedrun.com: runs you verified stay verified, and runs you rejected stay rejected.',
+  'history.clearConfirm': 'Clear history',
+  'history.clearAcknowledge': 'I understand this cannot be undone',
+  'history.cleared': 'History cleared',
+  'history.clearedHint': '{entries} removed from this machine.',
+  'history.clearFailed': 'Could not clear the history',
+  'history.loadMoreFailed': 'Could not load more history',
+  'history.nothingToExport': 'Nothing to export',
+  'history.nothingToExportHint': 'No history entries match the current filters.',
+  'history.empty': 'No actions recorded yet',
+  'history.emptyHint':
+    'Verify or reject a run and it will be written here, along with the reason you gave.',
+  'history.noMatch': 'Nothing matches those filters',
+  'history.noMatchHint': 'Widen the date range or clear the filters to see the rest of the log.',
+  // Three whole sentences rather than a stem plus two suffixes: the filtered and
+  // unfiltered forms put the numbers in different places in other languages.
+  'history.showing': 'Showing {shown}',
+  'history.showingOf': 'Showing {shown} of {total}',
+  'history.showingMatching': 'Showing {shown} matching ({total} recorded)',
+  'history.olderBelow': 'Older entries are further down.',
+  'history.col.when': 'When',
+  'history.col.action': 'Action',
+  'history.col.reason': 'Reason / result',
+  'history.loadMore': 'Load {count} more',
+  'history.requestFailed': 'The request failed.',
+  'history.noReason': 'No reason recorded',
+  'history.partOfBatch': 'part of a bulk operation',
+  'history.inspect': 'Inspect this run',
+  'history.copyRunIdTitle': 'Copy run id {id}',
+  // Machine names the backend writes into the audit log. An operation missing
+  // from this list is shown as its identifier rather than guessed at.
+  'history.op.bulkVerify': 'Bulk verify',
+  'history.op.bulkReject': 'Bulk reject',
+  'history.op.bulkDelete': 'Bulk delete',
+  'history.op.deleteRun': 'Delete run',
+  'history.batchesRecorded': '{operations} recorded',
+  'history.noBatches': 'No bulk operations yet',
+  'history.noBatchesHint':
+    'Selecting several runs and acting on them at once records the batch here, with how many succeeded and how many failed.',
+  'history.batch.allSucceeded': 'All succeeded',
+  'history.batch.partlyFailed': 'Partly failed',
+  'history.batch.failed': 'Failed',
+  'history.batch.finished': 'Finished {when}',
+  'history.batch.attempted': 'Attempted',
+  'history.batch.id': 'Batch {id}',
 
   // ----------------------------------------------------------------- settings
   'settings.title': 'Settings',
+  'settings.subtitle':
+    'Credentials, appearance, keyboard bindings and everything SRCTools keeps on this machine.',
   'settings.tab.account': 'Account',
   'settings.tab.appearance': 'Appearance',
   'settings.tab.moderation': 'Moderation',
@@ -409,12 +875,70 @@ export const en = {
   'settings.tab.keyboard': 'Keyboard',
   'settings.tab.data': 'Data',
 
+  // Bare unit labels beside a number field. Short on purpose — the field
+  // already carries the meaning, this only says what the digits count.
+  'settings.unit.runs': 'runs',
+  'settings.unit.seconds': 'seconds',
+  'settings.unit.reqPerMin': 'req/min',
+
   'settings.account.title': 'Speedrun.com API key',
+  'settings.account.connectionTitle': 'Speedrun.com connection',
   'settings.account.stored': 'Stored key',
-  'settings.account.replace': 'Replace key',
+  'settings.account.storedHint':
+    'Only this masked preview is ever shown. SRCTools cannot display the key back to you, and it is never written to a log or an export.',
+  'settings.account.replace': 'Replace the key',
+  'settings.account.add': 'Add a key',
   'settings.account.removeKey': 'Remove key',
-  'settings.account.getKey': 'Get your key',
+  'settings.account.removeTitle': 'Remove the stored API key?',
+  'settings.account.removeMessage':
+    'The key is deleted from the Windows credential vault. Your local history, statistics and settings are kept, but nothing that talks to Speedrun.com will work until you add a key again.',
+  'settings.account.removeFailed': 'Could not remove the key',
+  'settings.account.keyRemoved': 'Key removed',
+  'settings.account.keySaved': 'Key saved',
+  'settings.account.signedIn': 'Signed in as',
+  'settings.account.signedInAs': 'Signed in as {name}',
+  'settings.account.pasteFirst': 'Paste your API key first.',
+  'settings.account.pasteHint':
+    'It is checked against your profile before anything is saved. You can create one on your',
+  'settings.account.getKey': 'Speedrun.com API settings',
+  'settings.account.keyPlaceholder': 'API key',
+  'settings.account.keyAria': 'Speedrun.com API key',
+  'settings.account.checking': 'Checking',
+  'settings.account.connected': 'Connected',
+  'settings.account.notConnected': 'Not connected',
+  'settings.account.notWorking': 'Not working',
+  'settings.account.noKey': 'No key',
+  'settings.account.noAnswer': 'Speedrun.com did not answer.',
+  'settings.account.asking': 'Asking Speedrun.com who this key belongs to…',
+  'settings.account.test': 'Test connection',
+  'settings.account.noAccount': 'No account is attached yet.',
+  'settings.account.fromKey': 'Account resolved from the stored key.',
+  'settings.account.joined': 'Joined Speedrun.com on {date}.',
+  'settings.account.nobody': 'Nobody',
+  'settings.account.openProfile': 'Open the profile on Speedrun.com',
   'settings.account.twitch': 'Twitch video checks',
+
+  'settings.twitch.intro':
+    'Optional. Twitch requires an application of its own to answer questions about a video. Without one, SRCTools marks Twitch links “could not check” — never as deleted, because it genuinely does not know.',
+  'settings.twitch.bothRequired': 'Both the Client ID and the Client Secret are required.',
+  'settings.twitch.saved': 'Twitch credentials saved',
+  'settings.twitch.savedHint': 'Twitch links can now be checked automatically.',
+  'settings.twitch.removed': 'Twitch credentials removed',
+  'settings.twitch.removeFailed': 'Could not remove them',
+  'settings.twitch.removeTitle': 'Remove the Twitch credentials?',
+  'settings.twitch.removeMessage':
+    'Twitch links will still open normally, but SRCTools will report them as “could not check” instead of confirming whether the video exists.',
+  'settings.twitch.remove': 'Remove credentials',
+  'settings.twitch.removeHint': 'Twitch checks stop; nothing else changes.',
+  'settings.twitch.clientId': 'Client ID',
+  'settings.twitch.clientIdAria': 'Twitch Client ID',
+  'settings.twitch.clientIdHint':
+    'Both values are stored in the Windows credential vault. Create an application in the',
+  'settings.twitch.console': 'Twitch developer console',
+  'settings.twitch.clientSecret': 'Client Secret',
+  'settings.twitch.clientSecretAria': 'Twitch Client Secret',
+  'settings.twitch.clientSecretHint': 'Never displayed back, exported or logged.',
+  'settings.twitch.storedPlaceholder': 'Stored — enter to replace',
 
   'settings.language': 'Language',
   'settings.language.hint': 'Applies immediately. Your choice is remembered.',
@@ -446,6 +970,10 @@ export const en = {
   'settings.sidebar.text': 'Show labels',
   'settings.sidebar.bothOff': 'At least one of icons or labels has to stay on.',
   'settings.sidebar.hint': 'Icons only leaves a narrow strip with tooltips on hover.',
+  'settings.sidebar.position': 'Sidebar position',
+  'settings.sidebar.positionHint': 'Choose which side of the window holds the sidebar.',
+  'settings.sidebar.left': 'Left',
+  'settings.sidebar.right': 'Right',
   'settings.columns': 'Queue columns',
   'settings.columns.hint':
     'Hidden columns are removed from the table only. Sorting and filtering still work on them, and nothing is hidden from an export.',
@@ -453,17 +981,31 @@ export const en = {
   'settings.expandAnalysis.hint':
     'Show the findings list already open when a run’s detail panel appears.',
 
-  'settings.moderation.confirmVerify': 'Ask before verifying',
+  'settings.moderation.confirmations': 'Confirmations',
+  'settings.moderation.queue': 'Queue',
+  'settings.moderation.budget': 'Request budget',
+  'settings.moderation.confirmVerify': 'Ask before verifying a run',
   'settings.moderation.confirmVerifyHint':
-    'Rejection and deletion always confirm, whatever this is set to.',
+    'Rejection and deletion always ask, whatever this is set to — they are visible to the runner or cannot be undone.',
   'settings.moderation.onlyMyGames': 'Only show games I moderate',
+  'settings.moderation.onlyMyGamesHint':
+    'Off widens the queue to every pending run Speedrun.com will return, including games where you cannot act.',
   'settings.moderation.autoCheckVideos': 'Check videos when the queue loads',
+  'settings.moderation.autoCheckVideosHint':
+    'Verifies each run’s video links in the background. Turn it off on a slow connection — a check that fails is reported as “could not check”, never as a missing video.',
   'settings.moderation.queueLimit': 'Runs per refresh',
-  'settings.moderation.fastReviewDelay': 'Fast Review pause',
+  'settings.moderation.queueLimitHint':
+    'How many runs one refresh fetches. Higher means fewer round trips but a longer wait before anything appears. The backend caps this at 2000.',
+  'settings.moderation.fastReviewDelay': 'Pause after each decision',
   'settings.moderation.fastReviewDelayHint':
-    'Seconds the result stays on screen before the next run appears.',
+    'Seconds the outcome stays on screen before the next run appears. Zero advances immediately; a second or two makes a mistyped key obvious while it still means something.',
   'settings.moderation.rateLimit': 'Requests per minute',
-  'settings.moderation.rateLimitHint': 'Used now: {used} of {capacity}.',
+  'settings.moderation.rateLimitHint':
+    'A self-imposed ceiling on how fast SRCTools talks to Speedrun.com, kept below their published limit. Between 10 and 100; the backend clamps anything outside that and reports back what it applied.',
+  'settings.moderation.used': 'Currently used',
+  'settings.moderation.usedHint':
+    'Requests issued in the last sliding minute. When the budget is full, SRCTools waits rather than letting Speedrun.com refuse the request.',
+  'settings.moderation.refreshBudget': 'Refresh the request budget',
 
   'settings.notify.title': 'Notifications',
   'settings.notify.newRuns': 'New pending runs',
@@ -490,7 +1032,8 @@ export const en = {
   'settings.notify.smart': 'Adaptive interval',
   'settings.notify.smartHint':
     'Slows down when the window is minimised, backs off when the API is failing, and returns to normal once it recovers.',
-  'settings.notify.watcherOff': 'The watcher is off. Turn on “New pending runs” to start it.',
+  'settings.notify.watcherOff':
+    'The watcher is off. Turn on “New pending runs”, video problem alerts or the Discord webhook to start it.',
   'settings.notify.watcherState': 'Watcher',
   'settings.notify.watcherRunning': 'Running — checking every {interval}.',
   'settings.notify.watcherBackoff': 'Backing off after {count} failures — retrying in {interval}.',
@@ -555,12 +1098,11 @@ export const en = {
   'settings.webhook.events.rejected': 'Rejected runs',
   'settings.webhook.events.deletedVideos': 'Deleted videos',
   'settings.webhook.events.videoProblems': 'Video problems',
-  'settings.webhook.games': 'Only these games',
-  'settings.webhook.games.all': 'Posting about every game you moderate.',
-  'settings.webhook.games.some': 'Posting about {count} of {total} games.',
-  'settings.webhook.games.choose': 'Choose games',
-  'settings.webhook.games.hide': 'Done',
-  'settings.webhook.games.clear': 'Post about every game',
+  'settings.webhook.games': 'Games',
+  'settings.webhook.games.allLabel': 'All games',
+  'settings.webhook.games.all': 'Green posts, gray stays quiet. Switch this off to pick games one by one.',
+  'settings.webhook.games.only': 'Posting about: {games}.',
+  'settings.webhook.games.empty': 'Every game is switched off, so nothing will be sent. Switch on at least one game, or turn "All games" back on.',
   'settings.webhook.games.none': 'No moderated games loaded yet.',
   'settings.webhook.eventsHint':
     'Each event posts a separate message to the channel, with a coloured embed for the run.',
@@ -568,6 +1110,12 @@ export const en = {
   'settings.about': 'About',
   'settings.about.versionHint':
     'The version SRCTools was built as. Everything in the app reads the same value.',
+  'settings.about.developer': 'Developer',
+  'settings.about.developerHint': 'The SRCTools developer.',
+  'settings.about.source': 'Project page',
+  'settings.about.sourceHint':
+    'The GitHub repository this build and its updates come from. Opens in your browser.',
+  'settings.about.openGithub': 'Open on GitHub',
   'settings.about.updates': 'Updates',
   'settings.about.updatesBody':
     'SRCTools checks GitHub Releases at startup and shows a dialog when a newer version exists. Downloads open in your browser: run the installer it offers — no Git, Node.js or source code is needed to update. If the release page is empty, the developer has not published a build for this version yet.',
@@ -603,9 +1151,60 @@ export const en = {
   'discord.presence.moderator': 'Moderator: {name}',
 
   'settings.templates.title': 'Rejection templates',
+  'settings.templates.intro':
+    'Picking a template in the rejection dialog fills the reason box — it never sends anything on its own, so every rejection is still text you have read. The runner sees exactly what is in that box.',
   'settings.templates.new': 'New template',
+  'settings.templates.newTitle': 'New rejection template',
+  'settings.templates.editTitle': 'Edit template',
   'settings.templates.builtin': 'Built-in',
-  'settings.templates.restore': 'Restore built-in templates',
+  'settings.templates.restore': 'Restore built-ins',
+  'settings.templates.restored': 'Built-in templates restored',
+  'settings.templates.restoredHint': 'Your own templates were left alone.',
+  'settings.templates.restoreFailed': 'Could not restore them',
+  'settings.templates.empty': 'No templates',
+  'settings.templates.emptyHint':
+    'Add one for a reason you write often, or restore the built-in set.',
+  'settings.templates.moveUp': 'Move up',
+  'settings.templates.moveDown': 'Move down',
+  'settings.templates.edit': 'Edit template',
+  'settings.templates.copy': 'Copy the template text',
+  'settings.templates.copied': 'Template copied',
+  'settings.templates.delete': 'Delete template',
+  'settings.templates.deleteTitle': 'Delete “{name}”?',
+  'settings.templates.deleteMessage':
+    'The template is removed from the rejection dialog. Rejections you have already sent are unaffected.',
+  'settings.templates.deleteConfirm': 'Delete template',
+  'settings.templates.deleted': 'Template deleted',
+  'settings.templates.deleteFailed': 'Could not delete the template',
+  'settings.templates.reorderFailed': 'Could not reorder the templates',
+  'settings.templates.needBoth': 'A template needs both a name and a body.',
+  'settings.templates.added': 'Template added',
+  'settings.templates.saved': 'Template saved',
+  'settings.templates.saveButton': 'Save template',
+  'settings.templates.name': 'Name',
+  'settings.templates.namePlaceholder': 'Video unavailable',
+  'settings.templates.body': 'Message to the runner',
+  'settings.templates.bodyPlaceholder':
+    'The video link on this run cannot be viewed. Please resubmit with a working link.',
+  'settings.templates.bodyHint':
+    'This text is sent to Speedrun.com as the rejection reason and is visible to the runner, so write it as a message to them. You can still edit it before sending.',
+
+  'settings.templates.builtin.videoMissing.label': 'No video',
+  'settings.templates.builtin.videoMissing.body': 'This category requires video proof and no video was submitted. Please resubmit with a full, unedited recording of the run.',
+  'settings.templates.builtin.videoPrivate.label': 'Video not accessible',
+  'settings.templates.builtin.videoPrivate.body': 'The submitted video is not publicly viewable. Please make it public or unlisted and resubmit.',
+  'settings.templates.builtin.videoDeleted.label': 'Video deleted',
+  'settings.templates.builtin.videoDeleted.body': 'The submitted video no longer exists. Please resubmit with a working link.',
+  'settings.templates.builtin.timingMismatch.label': 'Timing mismatch',
+  'settings.templates.builtin.timingMismatch.body': 'The submitted time does not match the video. Please check the category timing rules and resubmit.',
+  'settings.templates.builtin.ruleBreak.label': 'Rule violation',
+  'settings.templates.builtin.ruleBreak.body': 'This run does not follow the category rules. Please review the rules and resubmit if it qualifies.',
+  'settings.templates.builtin.wrongCategory.label': 'Wrong category',
+  'settings.templates.builtin.wrongCategory.body': 'This run was submitted to the wrong category. Please resubmit it to the correct one.',
+  'settings.templates.builtin.duplicate.label': 'Duplicate submission',
+  'settings.templates.builtin.duplicate.body': 'This run has already been submitted. Rejecting the duplicate entry.',
+  'settings.templates.builtin.cutVideo.label': 'Video incomplete',
+  'settings.templates.builtin.cutVideo.body': 'The video does not show the full run without cuts. Please resubmit with a complete recording.',
 
   'settings.keyboard.title': 'Keyboard shortcuts',
   'settings.keyboard.fixed': 'Fixed',
@@ -620,15 +1219,128 @@ export const en = {
   'settings.keyboard.group.navigation': 'Navigation',
   'settings.keyboard.group.selection': 'Selection',
   'settings.keyboard.group.application': 'Application',
+  'settings.keyboard.intro':
+    'Press ? anywhere to see this list as a quick reference. Sequences such as G then D are two presses in a row, not a chord.',
+  'settings.keyboard.resetTitle': 'Reset every shortcut?',
+  'settings.keyboard.resetMessage': 'All bindings go back to their defaults. Nothing else changes.',
+  'settings.keyboard.resetConfirm': 'Reset shortcuts',
+  'settings.keyboard.reset': 'Shortcuts reset',
+  'settings.keyboard.resetFailed': 'Could not reset the shortcuts',
+  'settings.keyboard.restoreDefault': 'Restore the default ({binding})',
+  'settings.keyboard.restoreDefaultAria': 'Restore the default binding',
+  'settings.keyboard.fixedHint':
+    'This binding is a convention the app depends on and cannot be changed.',
+  'settings.keyboard.change': 'Change',
+  'settings.keyboard.saveFailed': 'Could not save the binding',
+  'settings.keyboard.rebindTitle': 'Rebind “{action}”',
+  'settings.keyboard.useKey': 'Use this key',
+  'settings.keyboard.captureHint':
+    'Press the key or combination you want. Escape closes this window without changing anything.',
+  'settings.keyboard.waiting': 'Waiting for a keystroke… currently',
+  'settings.keyboard.conflictBody':
+    '“{other}” already uses this key. Both will fire on it until you rebind that one too.',
+  'settings.keyboard.sequenceHint':
+    'Two-key sequences such as G then D cannot be recorded here; they are set by the defaults.',
+
+  // ------------------------------------------------------------- shortcuts
+  // One entry per action, plus a `.desc` line. The Settings list, the help
+  // window and the command palette all read these.
+  'shortcut.approve': 'Verify run',
+  'shortcut.approve.desc': 'Verify the focused run. Asks for confirmation unless you turn that off.',
+  'shortcut.reject': 'Reject run',
+  'shortcut.reject.desc': 'Open the rejection dialog for the focused run. A reason is required.',
+  'shortcut.openVideo': 'Open video',
+  'shortcut.openVideo.desc': 'Open the run’s first video link in your browser.',
+  'shortcut.openRun': 'Open on Speedrun.com',
+  'shortcut.openRun.desc': 'Open the focused run’s page in your browser.',
+  'shortcut.openDetail': 'Inspect run',
+  'shortcut.openDetail.desc': 'Open the detail panel for the focused run.',
+  'shortcut.toggleSelect': 'Select run',
+  'shortcut.toggleSelect.desc': 'Add or remove the focused run from the bulk selection.',
+  'shortcut.next': 'Next run',
+  'shortcut.next.desc': 'Move focus to the next run.',
+  'shortcut.previous': 'Previous run',
+  'shortcut.previous.desc': 'Move focus to the previous run.',
+  'shortcut.fastReview': 'Fast Review',
+  'shortcut.fastReview.desc':
+    'Enter Fast Review, which advances automatically after each action.',
+  'shortcut.escape': 'Close / cancel',
+  'shortcut.escape.desc': 'Close the open panel, dialog or menu.',
+  'shortcut.selectAll': 'Select all',
+  'shortcut.selectAll.desc': 'Select every run currently shown.',
+  'shortcut.clearSelection': 'Clear selection',
+  'shortcut.clearSelection.desc': 'Deselect every run.',
+  'shortcut.refresh': 'Refresh',
+  'shortcut.refresh.desc': 'Reload the current view from Speedrun.com.',
+  'shortcut.search': 'Filter runs',
+  'shortcut.search.desc': 'Focus the filter box in the queue toolbar.',
+  'shortcut.commandPalette': 'Command palette',
+  'shortcut.commandPalette.desc': 'Search games, runs, pages and commands.',
+  'shortcut.help': 'Keyboard shortcuts',
+  'shortcut.help.desc': 'Show this window.',
+  'shortcut.gotoDashboard': 'Go to Dashboard',
+  'shortcut.gotoDashboard.desc': 'Press G then D.',
+  'shortcut.gotoQueue': 'Go to Queue',
+  'shortcut.gotoQueue.desc': 'Press G then Q.',
+  'shortcut.gotoHistory': 'Go to History',
+  'shortcut.gotoHistory.desc': 'Press G then H.',
+  'shortcut.gotoStats': 'Go to Statistics',
+  'shortcut.gotoStats.desc': 'Press G then S.',
+  'shortcut.gotoSettings': 'Go to Settings',
+  'shortcut.gotoSettings.desc': 'Press G then comma.',
+  'shortcutHelp.footer':
+    'Bindings marked with a lock in Settings cannot be changed: they are conventions the app (and Windows) depend on. Every other key can be rebound under Settings → Keyboard.',
 
   'settings.data.title': 'Local data',
+  'settings.data.dbTitle': 'Local database',
+  'settings.data.where': 'Where it lives',
+  'settings.data.whereHint':
+    'One SQLite file. It holds the cache, your local history and your settings — never a credential; those are in the Windows vault.',
+  'settings.data.copyPath': 'Copy the database path',
+  'settings.data.pathCopied': 'Path copied',
+  'settings.data.size': 'File size',
+  'settings.data.sizeHint': 'Includes free space SQLite has reserved for reuse.',
   'settings.data.cacheEntries': 'Cached API responses',
-  'settings.data.videoChecks': 'Remembered video verdicts',
+  'settings.data.nothingCached': 'Nothing cached yet.',
+  'settings.data.oldest': 'Oldest fetched {when}.',
+  'settings.data.expired': '{count} expired',
+  'settings.data.videoChecks': 'Video verdicts',
+  'settings.data.videoChecksHint':
+    'Each remembered check, so re-opening a run does not ask the provider again.',
+  'settings.data.log': 'Moderation log',
+  'settings.data.logHint': 'Actions SRCTools recorded on this machine.',
   'settings.data.historyEntries': 'Recorded actions',
   'settings.data.databasePath': 'Database',
-  'settings.data.prune': 'Prune expired',
-  'settings.data.clearCache': 'Clear cache',
+  'settings.data.maintenance': 'Cache maintenance',
+  'settings.data.maintenanceHint':
+    'Everything below is safe: the cache is a copy of data Speedrun.com will hand over again. Clearing it costs API requests and time, never records.',
+  'settings.data.prune': 'Remove expired entries',
+  'settings.data.pruneHint': 'Drops rows past their expiry and reclaims the disk space.',
+  'settings.data.pruneButton': 'Prune',
+  'settings.data.pruned': 'Removed {entries}',
+  'settings.data.nothingExpired': 'Nothing had expired',
+  'settings.data.pruneFailed': 'Could not prune the cache',
+  'settings.data.clearCache': 'Empty the whole cache',
+  'settings.data.clearCacheHint': 'Leaves history, statistics and settings intact.',
+  'settings.data.clearTitle': 'Empty the cache?',
+  'settings.data.clearMessage':
+    'Everything in the cache came from Speedrun.com and can be fetched again, so nothing is lost — but the next few screens will be slower and will spend API requests. Your history, statistics and settings are not touched.',
+  'settings.data.clearConfirm': 'Empty cache',
+  'settings.data.cleared': 'Cache emptied',
+  'settings.data.clearedHint': '{entries} removed.',
+  'settings.data.clearFailed': 'Could not empty the cache',
   'settings.data.refreshGameData': 'Refresh game data',
+  'settings.data.refreshGameDataHint':
+    'Drops cached games, categories, levels and variables. Use this when a game’s rules have changed on the site but SRCTools still shows the old text.',
+  'settings.data.categories': 'Categories',
+  'settings.data.myGames': 'My games',
+  'settings.data.moderatedGames': 'Moderated games',
+  'settings.data.refreshed': '{what} refreshed',
+  'settings.data.refreshedHint': '{entries} dropped.',
+  'settings.data.refreshFailed': 'Could not drop the {what} cache',
+  'settings.data.storedWhere': 'What is stored where',
+  'settings.data.storedWhereBody':
+    'Your Speedrun.com API key and any Twitch credentials live in the Windows Credential Manager, encrypted by Windows against your user account. They are never written to the database, never included in an export and never printed to a log. Everything else — cached API responses, your local moderation history and these settings — is in the SQLite file above and never leaves this machine. To clear the local history, use the Clear button on the History page; it is kept separate from the cache because it is the one thing here that cannot be fetched again.',
   'settings.data.version': 'Version',
   'settings.data.checkUpdates': 'Check for updates',
   'settings.data.checking': 'Checking…',
@@ -642,6 +1354,14 @@ export const en = {
   'notify.newRun.body': '{game} — {category} by {player}',
   'notify.newRuns.title': '{count} new runs submitted',
   'notify.newRuns.body': 'Newest: {game} — {category} by {player}',
+  'notify.rejected.title': 'A run was rejected',
+  'notify.rejected.body': '{game} — {player}',
+  'notify.rejected.titleMany': '{count} runs were rejected',
+  'notify.rejected.bodyMany': 'A moderator rejected {count} runs.',
+  'notify.approved.title': 'A run was approved',
+  'notify.approved.body': '{game} — {player}',
+  'notify.approved.titleMany': '{count} runs were approved',
+  'notify.approved.bodyMany': 'A moderator approved {count} runs.',
   'notify.videoProblem.title': 'Video problem on a new run',
   'notify.videoProblem.body': '{game} — {player}: {status}',
   'notify.apiError.title': 'Speedrun.com is not answering',
@@ -650,6 +1370,24 @@ export const en = {
   'notify.apiRecovered.body': 'The watcher is back to its normal interval.',
   'notify.bulkDone.title': 'Bulk {operation} finished',
   'notify.bulkDone.body': '{succeeded} succeeded, {failed} failed.',
+
+  // ------------------------------------------------------- links and exports
+  // Refusing a link is a security decision, so the copy says what was refused and
+  // what the moderator can do instead, rather than only that something failed.
+  'open.noLink': 'No link to open',
+  'open.refused': 'That link was not opened',
+  'open.refusedHint':
+    'It is not an http or https address, so SRCTools will not hand it to Windows. Copy it and inspect it yourself if you need to.',
+  'open.failed': 'Could not open the link',
+  'open.copyFailed': 'Could not copy that',
+  'open.filter.csv': 'CSV spreadsheet',
+  'open.filter.json': 'JSON document',
+  'open.filter.text': 'Text file',
+  'open.exportSaved': 'Export saved',
+  'open.exportFailed': 'Could not save the export',
+  'open.startupWarning': 'Startup warning',
+  'open.recheckFailed': 'Could not re-check the videos',
+  'open.webhookFailed': 'Discord webhook failed',
 
   // ------------------------------------------------------------------- errors
   'error.missing_credentials': 'No API key is configured.',
@@ -667,23 +1405,42 @@ export const en = {
   'error.keyring': 'Secure credential storage is unavailable.',
   'error.io': 'A file operation failed.',
   'error.internal': 'Something went wrong inside SRCTools.',
+  'error.unreported': 'Something went wrong, and no further detail was reported.',
 
   // ------------------------------------------------------------------ dialogs
+  // Every confirmation in the app. The bulk titles count with `{runs}` rather
+  // than a bare `{count}`, because "1 run" and "3 runs" are one substitution in
+  // English and three different words in Russian.
   'dialog.reject.title': 'Reject run',
-  'dialog.reject.titleMany': 'Reject {count} runs',
+  'dialog.reject.titleMany': 'Reject {runs}',
+  'dialog.reject.thisRun': 'this run',
   'dialog.reject.hint':
-    'The reason below is sent to Speedrun.com and is visible to the runner, so write it as a message to them.',
+    '{subject}. The reason below is sent to Speedrun.com and is visible to the runner, so write it as a message to them.',
   'dialog.reject.placeholder': 'Why is this run being rejected?',
+  'dialog.reject.reasonAria': 'Rejection reason',
   'dialog.reject.required': 'A reason is required before a run can be rejected.',
   'dialog.reject.templates': 'Templates',
-  'dialog.reject.templatesHint': 'Picking a template fills the box; edit it before sending.',
+  'dialog.reject.templatesHint':
+    'Picking a template fills the box; edit it before sending. Manage the list under Settings → Templates.',
   'dialog.verify.title': 'Verify this run?',
-  'dialog.verify.message': 'It becomes a verified run on Speedrun.com straight away.',
-  'dialog.verifyMany.title': 'Verify {count} runs?',
-  'dialog.delete.title': 'Delete this run?',
+  'dialog.verify.message': '{run}. This marks the run verified on Speedrun.com.',
+  'dialog.delete.title': 'Delete this run permanently?',
   'dialog.delete.message':
-    'Deletion removes the run from Speedrun.com entirely and cannot be undone.',
-  'dialog.deleteMany.title': 'Delete {count} runs?',
+    '{run}. Deleting removes the run from Speedrun.com entirely. This cannot be undone, and rejecting is usually the right action instead.',
+  'dialog.delete.confirm': 'Delete permanently',
+  'dialog.delete.acknowledge': 'I understand this run cannot be recovered.',
+  'dialog.verifyMany.title': 'Verify {runs}?',
+  'dialog.verifyMany.message':
+    '{runs} will be verified on Speedrun.com. Runs are processed one at a time and you can stop partway.',
+  'dialog.rejectMany.title': 'Reject {runs}?',
+  'dialog.rejectMany.message':
+    '{runs} will be rejected on Speedrun.com. Runs are processed one at a time and you can stop partway.',
+  'dialog.rejectMany.messageWithReason':
+    '{runs} will be rejected on Speedrun.com with the reason: “{reason}”. Runs are processed one at a time and you can stop partway.',
+  'dialog.deleteMany.title': 'Delete {runs}?',
+  'dialog.deleteMany.message':
+    '{runs} will be removed from Speedrun.com permanently. This cannot be undone.',
+  'dialog.deleteMany.acknowledge': 'I understand these runs cannot be recovered.',
   'dialog.clearCache.title': 'Clear the local cache?',
   'dialog.clearCache.message':
     'Everything cached came from Speedrun.com and will be fetched again as needed. Your history and settings are untouched.',

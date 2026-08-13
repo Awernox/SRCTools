@@ -16,6 +16,18 @@
   grid-template-columns: 52px 1fr;
 }
 
+.app[data-sidebar-position='right'] {
+  grid-template-columns: 1fr var(--sidebar-w);
+  grid-template-areas:
+    'header brand'
+    'main sidebar'
+    'status status';
+}
+
+.app[data-sidebar-position='right'][data-sidebar-collapsed='true'] {
+  grid-template-columns: 1fr 52px;
+}
+
 /* ------------------------------------------------------------- top bar */
 
 .brand {
@@ -28,6 +40,11 @@
   border-right: 1px solid var(--border-subtle);
   background: var(--bg-base);
   overflow: hidden;
+}
+
+.app[data-sidebar-position='right'] .brand {
+  border-right: 0;
+  border-left: 1px solid var(--border-subtle);
 }
 
 .brand__mark {
@@ -111,6 +128,24 @@
   border-right: 1px solid var(--border-subtle);
   background: var(--bg-base);
   overflow: hidden;
+}
+
+.app[data-sidebar-position='right'] .sidebar {
+  border-right: 0;
+  border-left: 1px solid var(--border-subtle);
+}
+
+.app[data-sidebar-position='right'] .page {
+  direction: rtl;
+}
+
+.app[data-sidebar-position='right'] .page > * {
+  direction: ltr;
+}
+
+.app[data-sidebar-position='right'] .settings-page,
+.app[data-sidebar-position='right'] .settings-page > * {
+  direction: ltr;
 }
 
 .sidebar__scroll {

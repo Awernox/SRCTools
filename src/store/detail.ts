@@ -9,6 +9,7 @@
 
 import { create } from 'zustand';
 
+import { t } from '../i18n';
 import { errorText, queue } from '../ipc';
 import type { RunDetail } from '../types';
 import { useModeration } from './moderation';
@@ -84,7 +85,7 @@ export const useDetail = create<DetailState>((set, get) => ({
       if (detail) set({ detail: { ...detail, videoChecks: checks } });
       await get().refresh();
     } catch (err) {
-      ui.error('Could not re-check the videos', err);
+      ui.error(t('open.recheckFailed'), err);
     } finally {
       set({ rechecking: false });
     }

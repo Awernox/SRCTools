@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 
 import {
+  Absent,
   Badge,
   Card,
   EmptyState,
@@ -38,6 +39,7 @@ import {
   Tooltip,
 } from '../components/ui';
 import { formatDate, formatNumber, plural } from '../format';
+import { useT, type Translate } from '../i18n';
 import { errorText, library, prefs } from '../ipc';
 import { openExternal } from '../open';
 import { useApp } from '../store/app';
@@ -53,6 +55,7 @@ export function Games({ gameId }: { gameId: string | null }) {
 /* ------------------------------------------------------------------- list */
 
 function GameList() {
+  const t = useT();
   const games = useSession((state) => state.games);
   const loading = useSession((state) => state.gamesLoading);
   const error = useSession((state) => state.gamesError);
@@ -80,14 +83,14 @@ function GameList() {
   // local list answers most questions on its own.
   const searchRemote = async () => {
     if (needle.length < 2) {
-      ui.warning('Type at least two characters', 'Speedrun.com rejects shorter searches.');
+      ui.warning(t('games.searchTooShort'), t('games.searchTooShortHint'));
       return;
     }
     setSearching(true);
     try {
       setRemote(await library.searchGames(query.trim(), 24));
     } catch (err) {
-      ui.error('Could not search Speedrun.com', err);
+      ui.error(t('games.searchFailed'), err);
       setRemote(null);
     } finally {
       setSearching(false);
@@ -99,11 +102,11 @@ function GameList() {
       <div className="page">
         <EmptyState
           icon={<Gamepad2 size={26} />}
-          title="Not connected to Speedrun.com"
-          hint="Add your API key in Settings to see the games you moderate."
+          title={t('queue.noKey')}
+          hint={t('games.noKeyHint')}
           action={
             <button type="button" className="btn btn--primary" onClick={() => go('settings')}>
-              Open Settings
+              {t('queue.openSettings')}
             </button>
           }
         />
@@ -115,11 +118,11 @@ function GameList() {
     <div className="page">
       <div className="page__header">
         <div className="page__heading">
-          <h2 className="h1">Games</h2>
+          <h2 className="h1">{t('games.title')}</h2>
           <p className="page__subtitle">
             {loading && games.length === 0
-              ? 'Loading the games you moderate…'
-              : `${plural(games.length, 'game')} you moderate. Open one to read its rules.`}
+              ? t('games.loading')
+              : t('games.subtitle', { games: plural(games.length, 'game') })}
           </p>
         </div>
         <div className="page__actions">
@@ -130,7 +133,7 @@ function GameList() {
             disabled={loading}
           >
             {loading ? <Spinner /> : <RefreshCw size={13} />}
-            Refresh
+            {t('common.refresh')}
           </button>
         </div>
       </div>
@@ -141,7 +144,7 @@ function GameList() {
           <input
             className="input"
             style={{ flex: 1, minWidth: 0 }}
-            placeholder="Filter your games, or search all of Speedrun.com"
+            placeholder={t('games.filterPlaceholder')}
             value={query}
             onChange={(event) => {
               setQuery(event.currentTarget.value);
@@ -159,7 +162,7 @@ function GameList() {
           disabled={searching}
         >
           {searching ? <Spinner /> : <Search size={13} />}
-          Search Speedrun.com
+          {t('games.searchSrc')}
         </button>
       </div>
 
@@ -182,8 +185,8 @@ function GameList() {
       {error === null && !loading && games.length === 0 && (
         <EmptyState
           icon={<Gamepad2 size={26} />}
-          title="No moderated games"
-          hint="Speedrun.com does not list you as a moderator on any game. You can still search for a game to read its rules."
+          title={t('games.noneModerated')}
+          hint={t('games.noneModeratedHint')}
         />
       )}
 
@@ -191,7 +194,9 @@ function GameList() {
         <>
           <div className="section__title" style={{ marginTop: 4 }}>
             <ListChecks size={13} />
-            {needle ? `${plural(mine.length, 'match')} in your games` : 'Games you moderate'}
+            {needle
+              ? t('games.matchesInYours', { matches: plural(mine.length, 'match') })
+              : t('games.yourGames')}
           </div>
           <div className="grid-cards">
             {mine.map((game) => (
@@ -204,11 +209,11 @@ function GameList() {
       {needle.length > 0 && mine.length === 0 && remote === null && (
         <EmptyState
           icon={<Search size={24} />}
-          title={`Nothing of yours matches “${query.trim()}”`}
-          hint="Search Speedrun.com to look it up anyway — you can read any game's rules, even one you do not moderate."
+          title={t('games.noLocalMatch', { query: query.trim() })}
+          hint={t('games.noLocalMatchHint')}
           action={
             <button type="button" className="btn btn--primary" onClick={() => void searchRemote()}>
-              Search Speedrun.com
+              {t('games.searchSrc')}
             </button>
           }
         />
@@ -218,10 +223,13 @@ function GameList() {
         <>
           <div className="section__title" style={{ marginTop: 16 }}>
             <Search size={13} />
-            Speedrun.com results
+            {t('games.srcResults')}
           </div>
           {remote.length === 0 ? (
-            <EmptyState title="No games matched" hint={`Speedrun.com found nothing for “${query.trim()}”.`} />
+            <EmptyState
+              title={t('games.noRemoteMatch')}
+              hint={t('games.noRemoteMatchHint', { query: query.trim() })}
+            />
           ) : (
             <div className="grid-cards">
               {remote.map((game) => (
@@ -236,6 +244,7 @@ function GameList() {
 }
 
 function GameCard({ game, onOpen }: { game: GameSummary; onOpen: () => void }) {
+  const t = useT();
   return (
     <button type="button" className="game-card" onClick={onOpen} title={game.name}>
       {game.coverUrl !== null ? (
@@ -248,13 +257,13 @@ function GameCard({ game, onOpen }: { game: GameSummary; onOpen: () => void }) {
       <span className="game-card__body">
         <span className="game-card__name">{game.name}</span>
         <span className="dim" style={{ fontSize: 'var(--text-xs)' }}>
-          {game.abbreviation ?? '—'}
+          {game.abbreviation ?? <Absent />}
           {game.released !== null && ` · ${game.released}`}
         </span>
         {game.isModerator && (
           <span>
             <Badge tone="accent" small>
-              Moderator
+              {t('games.moderatorBadge')}
             </Badge>
           </span>
         )}
@@ -275,6 +284,7 @@ interface GameBundle {
 }
 
 function GameDetail({ gameId }: { gameId: string }) {
+  const t = useT();
   const openGame = useApp((state) => state.openGame);
   const go = useApp((state) => state.go);
 
@@ -332,7 +342,7 @@ function GameDetail({ gameId }: { gameId: string }) {
     try {
       if (pinned) {
         await prefs.removeFavorite(gameId);
-        ui.success('Unpinned', `${bundle.game.name} was removed from the sidebar.`);
+        ui.success(t('games.unpinned'), t('games.unpinnedHint', { game: bundle.game.name }));
       } else {
         await prefs.addFavorite(
           gameId,
@@ -340,11 +350,11 @@ function GameDetail({ gameId }: { gameId: string }) {
           bundle.game.abbreviation,
           bundle.game.coverUrl,
         );
-        ui.success('Pinned', `${bundle.game.name} is now in the sidebar.`);
+        ui.success(t('games.pinned'), t('games.pinnedHint', { game: bundle.game.name }));
       }
       await refreshFavorites();
     } catch (err) {
-      ui.error('Could not update your pinned games', err);
+      ui.error(t('games.pinFailed'), err);
     } finally {
       setPinning(false);
     }
@@ -358,7 +368,7 @@ function GameDetail({ gameId }: { gameId: string }) {
   const back = (
     <button type="button" className="btn btn--sm btn--ghost" onClick={() => openGame(null)}>
       <ArrowLeft size={13} />
-      All games
+      {t('games.allGames')}
     </button>
   );
 
@@ -383,8 +393,8 @@ function GameDetail({ gameId }: { gameId: string }) {
           <div className="page__heading">{back}</div>
         </div>
         <ErrorState
-          title="Could not load this game"
-          message={error ?? 'Speedrun.com returned nothing for this game id.'}
+          title={t('games.loadFailed')}
+          message={error ?? t('games.loadFailedEmpty')}
           onRetry={() => setReload((n) => n + 1)}
         />
       </div>
@@ -401,13 +411,7 @@ function GameDetail({ gameId }: { gameId: string }) {
           <h2 className="h1" style={{ marginTop: 6 }}>
             {game.name}
           </h2>
-          <p className="page__subtitle">
-            {game.abbreviation ?? 'No abbreviation'}
-            {game.releaseDate !== null && ` · released ${formatDate(game.releaseDate)}`}
-            {game.isModerator
-              ? ` · you are a ${game.moderatorRole ?? 'moderator'} here`
-              : ' · you do not moderate this game'}
-          </p>
+          <p className="page__subtitle">{detailSubtitle(game, t)}</p>
         </div>
         <div className="page__actions">
           <button
@@ -417,7 +421,7 @@ function GameDetail({ gameId }: { gameId: string }) {
             disabled={pinning}
           >
             {pinned ? <StarOff size={13} /> : <Star size={13} />}
-            {pinned ? 'Unpin' : 'Pin to sidebar'}
+            {pinned ? t('games.unpin') : t('games.pin')}
           </button>
           <button
             type="button"
@@ -426,11 +430,11 @@ function GameDetail({ gameId }: { gameId: string }) {
             disabled={game.weblink === null}
           >
             <ExternalLink size={13} />
-            Open on Speedrun.com
+            {t('action.openOnSrc')}
           </button>
           <button type="button" className="btn btn--sm btn--primary" onClick={reviewThisGame}>
             <ListChecks size={13} />
-            Review this game
+            {t('games.reviewThis')}
           </button>
         </div>
       </div>
@@ -438,49 +442,40 @@ function GameDetail({ gameId }: { gameId: string }) {
       {!game.isModerator && (
         <div className="notice notice--info">
           <Info size={15} />
-          <span>
-            You are not listed as a moderator of this game, so verifying or rejecting its runs will
-            be refused by Speedrun.com. The rules below are still readable.
-          </span>
+          <span>{t('games.notModeratorNotice')}</span>
         </div>
       )}
 
       <div className="col" style={{ gap: 16, marginTop: 16 }}>
-        <Card title="Submission rules" icon={<BookOpen size={13} />}>
+        <Card title={t('games.rules')} icon={<BookOpen size={13} />}>
           <div className="dl">
-            <RuleFlag label="Video required" value={game.requireVideo} />
-            <RuleFlag label="Verification required" value={game.requireVerification} />
-            <RuleFlag label="Emulators allowed" value={game.emulatorsAllowed} />
-            <RuleFlag label="Romhack" value={game.romhack} />
-            <RuleFlag label="Milliseconds shown" value={game.showMilliseconds} />
+            <RuleFlag label={t('games.flag.video')} value={game.requireVideo} />
+            <RuleFlag label={t('games.flag.verification')} value={game.requireVerification} />
+            <RuleFlag label={t('games.flag.emulators')} value={game.emulatorsAllowed} />
+            <RuleFlag label={t('games.flag.romhack')} value={game.romhack} />
+            <RuleFlag label={t('games.flag.milliseconds')} value={game.showMilliseconds} />
 
-            <span className="dl__key">Default timing</span>
-            <span className="dl__val">
-              {game.defaultTime ?? <span className="absent">not stated</span>}
-            </span>
+            <span className="dl__key">{t('games.defaultTiming')}</span>
+            <span className="dl__val">{game.defaultTime ?? <NotStated />}</span>
 
-            <span className="dl__key">Timing methods</span>
+            <span className="dl__key">{t('games.timingMethods')}</span>
             <span className="dl__val">
-              {game.runTimes.length > 0 ? (
-                game.runTimes.join(', ')
-              ) : (
-                <span className="absent">not stated</span>
-              )}
+              {game.runTimes.length > 0 ? game.runTimes.join(', ') : <NotStated />}
             </span>
           </div>
         </Card>
 
         <Card
-          title="Rules and structure"
+          title={t('games.structure')}
           icon={<Layers size={13} />}
           actions={
             <Tabs
               value={tab}
               onChange={setTab}
               tabs={[
-                { value: 'categories', label: 'Categories', count: categories.length },
-                { value: 'levels', label: 'Levels', count: levels.length },
-                { value: 'variables', label: 'Variables', count: variables.length },
+                { value: 'categories', label: t('games.categories'), count: categories.length },
+                { value: 'levels', label: t('games.levels'), count: levels.length },
+                { value: 'variables', label: t('games.variables'), count: variables.length },
               ]}
             />
           }
@@ -502,20 +497,18 @@ function GameDetail({ gameId }: { gameId: string }) {
  * omission as a rule.
  */
 function RuleFlag({ label, value }: { label: string; value: boolean | null }) {
+  const t = useT();
   return (
     <>
       <span className="dl__key">{label}</span>
       <span className="dl__val">
         {value === null ? (
-          <Tooltip
-            label="Not stated"
-            detail="Speedrun.com did not return this setting for this game. That is not the same as “no”."
-          >
-            <span className="absent">not stated</span>
+          <Tooltip label={t('games.notStatedTitle')} detail={t('games.notStatedDetail')}>
+            <NotStated />
           </Tooltip>
         ) : (
           <Badge tone={value ? 'ok' : 'neutral'} small>
-            {value ? 'Yes' : 'No'}
+            {value ? t('common.yes') : t('common.no')}
           </Badge>
         )}
       </span>
@@ -523,14 +516,42 @@ function RuleFlag({ label, value }: { label: string; value: boolean | null }) {
   );
 }
 
+/**
+ * "not stated" — a setting the game never configured.
+ *
+ * Deliberately not the em dash [`Absent`] uses: that one means Speedrun.com
+ * returned no value for a run, this one means the game's own rules are silent,
+ * and conflating the two would let a moderator read one as the other.
+ */
+function NotStated() {
+  const t = useT();
+  return <span className="absent">{t('common.notStated')}</span>;
+}
+
+/**
+ * The line under a game's name: abbreviation, release date, and your standing.
+ *
+ * Built by joining whole clauses rather than by appending fragments, so each
+ * part can be reordered or reworded by a translation instead of being locked to
+ * English word order by a leading " · ".
+ */
+function detailSubtitle(game: GameInfo, t: Translate): string {
+  const parts = [game.abbreviation ?? t('games.noAbbreviation')];
+  if (game.releaseDate !== null) {
+    parts.push(t('games.released', { date: formatDate(game.releaseDate) }));
+  }
+  parts.push(
+    game.isModerator
+      ? t('games.youAreRole', { role: game.moderatorRole ?? t('games.roleModerator') })
+      : t('games.notModerating'),
+  );
+  return parts.join(' · ');
+}
+
 function CategoryList({ categories }: { categories: CategoryInfo[] }) {
+  const t = useT();
   if (categories.length === 0) {
-    return (
-      <EmptyState
-        title="No categories loaded"
-        hint="Speedrun.com returned no categories for this game, or the request failed."
-      />
-    );
+    return <EmptyState title={t('games.noCategories')} hint={t('games.noCategoriesHint')} />;
   }
 
   return (
@@ -542,7 +563,7 @@ function CategoryList({ categories }: { categories: CategoryInfo[] }) {
             {category.name}
             {category.miscellaneous === true && (
               <Badge tone="neutral" small>
-                Misc
+                {t('games.misc')}
               </Badge>
             )}
             {category.playerType !== null && (
@@ -569,10 +590,7 @@ function CategoryList({ categories }: { categories: CategoryInfo[] }) {
           ) : (
             <div className="notice notice--unknown">
               <Info size={15} />
-              <span>
-                This category has no rules text on Speedrun.com. That is not the same as having no
-                rules — check the game's forum or the moderators.
-              </span>
+              <span>{t('games.noCategoryRules')}</span>
             </div>
           )}
         </div>
@@ -582,10 +600,9 @@ function CategoryList({ categories }: { categories: CategoryInfo[] }) {
 }
 
 function LevelList({ levels }: { levels: Level[] }) {
+  const t = useT();
   if (levels.length === 0) {
-    return (
-      <EmptyState title="No individual levels" hint="This game has no level leaderboards." />
-    );
+    return <EmptyState title={t('games.noLevels')} hint={t('games.noLevelsHint')} />;
   }
 
   return (
@@ -611,7 +628,7 @@ function LevelList({ levels }: { levels: Level[] }) {
             </div>
           ) : (
             <div className="dim" style={{ fontSize: 'var(--text-xs)' }}>
-              No level-specific rules were given.
+              {t('games.noLevelRules')}
             </div>
           )}
         </div>
@@ -621,23 +638,19 @@ function LevelList({ levels }: { levels: Level[] }) {
 }
 
 function VariableList({ variables }: { variables: Variable[] }) {
+  const t = useT();
   if (variables.length === 0) {
-    return (
-      <EmptyState
-        title="No variables"
-        hint="This game defines no subcategories or extra fields on its submissions."
-      />
-    );
+    return <EmptyState title={t('games.noVariables')} hint={t('games.noVariablesHint')} />;
   }
 
   return (
     <table className="data-table">
       <thead>
         <tr>
-          <th>Variable</th>
-          <th>Scope</th>
-          <th>Values</th>
-          <th>Required</th>
+          <th>{t('games.var.name')}</th>
+          <th>{t('games.var.scope')}</th>
+          <th>{t('games.var.values')}</th>
+          <th>{t('games.var.required')}</th>
         </tr>
       </thead>
       <tbody>
@@ -649,25 +662,25 @@ function VariableList({ variables }: { variables: Variable[] }) {
                 <>
                   {' '}
                   <Badge tone="accent" small>
-                    Subcategory
+                    {t('detail.facts.subcategory')}
                   </Badge>
                 </>
               )}
             </td>
-            <td className="dim">{variable.scope ?? '—'}</td>
+            <td className="dim">{variable.scope ?? <Absent />}</td>
             <td>
               {variable.values.length === 0 ? (
-                <span className="absent">—</span>
+                <Absent />
               ) : (
                 variable.values.map((value) => value.label).join(', ')
               )}
             </td>
             <td>
               {variable.mandatory === null ? (
-                <span className="absent">not stated</span>
+                <NotStated />
               ) : (
                 <Badge tone={variable.mandatory ? 'warn' : 'neutral'} small>
-                  {variable.mandatory ? 'Yes' : 'No'}
+                  {variable.mandatory ? t('common.yes') : t('common.no')}
                 </Badge>
               )}
             </td>

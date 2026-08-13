@@ -127,12 +127,12 @@ pub fn is_newer(candidate: &str, current: &str) -> bool {
 // The repository
 // ---------------------------------------------------------------------------
 
-/// Splits `CARGO_PKG_REPOSITORY` into `owner/name`.
+/// Splits a GitHub repository URL into `owner/name`.
 ///
 /// Returns `None` for an empty field, a non-GitHub host or the placeholder
 /// owner, all of which mean "no update source is configured".
-fn repo() -> Option<(String, String)> {
-    let raw = env!("CARGO_PKG_REPOSITORY").trim();
+fn split_repo(raw: &str) -> Option<(String, String)> {
+    let raw = raw.trim();
     if raw.is_empty() {
         return None;
     }
@@ -149,9 +149,23 @@ fn repo() -> Option<(String, String)> {
     Some((owner, name))
 }
 
+/// The configured repository, read from `CARGO_PKG_REPOSITORY` at compile time.
+pub fn repo() -> Option<(String, String)> {
+    split_repo(env!("CARGO_PKG_REPOSITORY"))
+}
+
 /// True when an update source is configured, for the Settings row.
 pub fn is_configured() -> bool {
     repo().is_some()
+}
+
+/// The project's GitHub page, for the link in Settings → About.
+///
+/// Rebuilt from the parsed owner and name rather than handed back verbatim, so
+/// the link cannot be anything but a plain `https://github.com/owner/name` — a
+/// `.git` suffix or a stray path in the manifest never reaches the browser.
+pub fn repository_url() -> Option<String> {
+    repo().map(|(owner, name)| format!("https://github.com/{owner}/{name}"))
 }
 
 // ---------------------------------------------------------------------------
@@ -347,10 +361,38 @@ mod tests {
     }
 
     #[test]
-    fn the_placeholder_repository_counts_as_unconfigured() {
-        // Guards the shipped Cargo.toml: until OWNER is replaced, the check
-        // must report itself unconfigured rather than query a dead URL.
-        assert_eq!(is_configured(), repo().is_some());
+    fn the_shipped_repository_is_the_one_releases_come_from() {
+        // Guards Cargo.toml: a typo here is invisible until a release exists
+        // and nobody's update check finds it.
+        assert_eq!(
+            repo(),
+            Some(("Awernox".to_string(), "SRCTools".to_string()))
+        );
+        assert!(is_configured());
+    }
+
+    #[test]
+    fn the_about_link_and_the_release_check_share_one_repository() {
+        // The About row must not grow its own copy of the URL: this is the
+        // assertion that catches it if it ever does.
+        assert_eq!(
+            repository_url().as_deref(),
+            Some("https://github.com/Awernox/SRCTools")
+        );
+    }
+
+    #[test]
+    fn only_a_real_github_repository_configures_the_check() {
+        assert_eq!(
+            split_repo("https://github.com/Awernox/SRCTools.git"),
+            Some(("Awernox".to_string(), "SRCTools".to_string()))
+        );
+        // The placeholder a fork would still be carrying.
+        assert_eq!(split_repo("https://github.com/OWNER/srctools"), None);
+        // Somewhere that is not GitHub cannot answer the releases API.
+        assert_eq!(split_repo("https://gitlab.com/someone/srctools"), None);
+        assert_eq!(split_repo(""), None);
+        assert_eq!(split_repo("https://github.com/Awernox"), None);
     }
 
     #[test]

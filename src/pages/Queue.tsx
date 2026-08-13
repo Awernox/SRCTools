@@ -45,6 +45,7 @@ import {
 } from '../components/ui';
 import { useShortcuts } from '../hooks/useShortcuts';
 import { useSplit } from '../hooks/useSplit';
+import { useT, type Translate, type TranslationKey } from '../i18n';
 import { records } from '../ipc';
 import { formatNumber, plural } from '../format';
 import { copyToClipboard, openExternal, saveExport } from '../open';
@@ -57,21 +58,32 @@ import type { RunSummary } from '../types';
 import { QueueTable } from './QueueTable';
 import { RunDetailPanel } from './RunDetail';
 
-const STATUS_OPTIONS = [
-  { value: 'new' as const, label: 'Pending', title: 'Runs awaiting a decision' },
-  { value: 'verified' as const, label: 'Verified', title: 'Runs already verified' },
-  { value: 'rejected' as const, label: 'Rejected', title: 'Runs already rejected' },
+// Built per render rather than at module scope: a module-level array would be
+// frozen in whatever language the app started in.
+const statusOptions = (t: Translate) => [
+  { value: 'new' as const, label: t('runStatus.new'), title: t('queue.status.newHint') },
+  {
+    value: 'verified' as const,
+    label: t('runStatus.verified'),
+    title: t('queue.status.verifiedHint'),
+  },
+  {
+    value: 'rejected' as const,
+    label: t('runStatus.rejected'),
+    title: t('queue.status.rejectedHint'),
+  },
 ];
 
-const VIDEO_OPTIONS: Array<{ value: VideoFilter; label: string }> = [
-  { value: 'any', label: 'Any video state' },
-  { value: 'problem', label: 'Video problems only' },
-  { value: 'ok', label: 'Confirmed available' },
-  { value: 'unverified', label: 'Not verified yet' },
-  { value: 'none', label: 'No video link' },
+const videoOptions = (t: Translate): Array<{ value: VideoFilter; label: string }> => [
+  { value: 'any', label: t('queue.video.any') },
+  { value: 'problem', label: t('queue.video.problem') },
+  { value: 'ok', label: t('queue.video.ok') },
+  { value: 'unverified', label: t('queue.video.unverified') },
+  { value: 'none', label: t('queue.video.none') },
 ];
 
 export function Queue() {
+  const t = useT();
   const searchBox = useRef<HTMLInputElement | null>(null);
   const [menu, setMenu] = useState<MenuAnchor | null>(null);
   /** Runs the rejection dialog is open for; `null` when it is closed. */
@@ -148,7 +160,7 @@ export function Queue() {
       if (!run) return;
       const first = run.videoUrls[0];
       if (first) void openExternal(first);
-      else ui.warning('This run has no video link');
+      else ui.warning(t('queue.noVideoLink'));
     },
     openRun: () => {
       const run = useQueue.getState().focused();
@@ -174,7 +186,7 @@ export function Queue() {
     },
     fastReview: () => {
       if (runs.length === 0) {
-        ui.info('Nothing to review', 'Fast Review needs at least one run in the queue.');
+        ui.info(t('queue.nothingToReview'), t('queue.nothingToReviewHint'));
         return;
       }
       setFastReview(true);
@@ -192,11 +204,11 @@ export function Queue() {
   const columnMenu = (): MenuEntry[] => {
     const visibleCount = QUEUE_COLUMNS.length - hidden.length;
     return [
-      { heading: 'Visible columns' },
+      { heading: t('queue.columns.heading') },
       ...QUEUE_COLUMNS.map((column) => {
         const isHidden = hidden.includes(column.id);
         return {
-          label: column.label,
+          label: t(column.labelKey),
           icon: isHidden ? <span style={{ width: 13 }} /> : <Check size={13} />,
           // The last remaining column cannot be hidden; an empty table would
           // leave no way to get it back.
@@ -213,17 +225,23 @@ export function Queue() {
 
   const exportMenu = (): MenuEntry[] => {
     const chosen = selected.size > 0 ? selectedRuns() : runs;
-    const scope = selected.size > 0 ? 'selected' : 'shown';
+    const scope =
+      selected.size > 0 ? t('queue.export.scopeSelected') : t('queue.export.scopeShown');
     return [
-      { heading: `Export ${plural(chosen.length, 'run')} (${scope})` },
       {
-        label: 'Comma-separated values (.csv)',
+        heading: t('queue.export.heading', {
+          runs: plural(chosen.length, 'run'),
+          scope,
+        }),
+      },
+      {
+        label: t('queue.export.csv'),
         icon: <Download size={13} />,
         disabled: chosen.length === 0 || exporting,
         onSelect: () => void runExport('csv', chosen),
       },
       {
-        label: 'JSON (.json)',
+        label: t('queue.export.json'),
         icon: <Download size={13} />,
         disabled: chosen.length === 0 || exporting,
         onSelect: () => void runExport('json', chosen),
@@ -238,7 +256,7 @@ export function Queue() {
       const payload = await records.exportRuns(format, chosen);
       await saveExport(payload);
     } catch (err) {
-      ui.error('Could not build the export', err);
+      ui.error(t('queue.exportFailed'), err);
     } finally {
       setExporting(false);
     }
@@ -257,15 +275,15 @@ export function Queue() {
       <div className="page">
         <EmptyState
           icon={<ShieldAlert size={26} />}
-          title="Not connected to Speedrun.com"
-          hint="The review queue comes from your moderator account. Add your API key in Settings to load it."
+          title={t('queue.noKey')}
+          hint={t('queue.noKeyHint')}
           action={
             <button
               type="button"
               className="btn btn--primary"
               onClick={() => useApp.getState().go('settings')}
             >
-              Open Settings
+              {t('queue.openSettings')}
             </button>
           }
         />
@@ -280,17 +298,13 @@ export function Queue() {
       <div className="toolbar">
         <Segmented
           value={(filter.status ?? 'new') as 'new' | 'verified' | 'rejected'}
-          options={STATUS_OPTIONS}
+          options={statusOptions(t)}
           onChange={(value) => void setFilter({ status: value })}
         />
 
         <div className="toolbar__divider" />
 
-        <label
-          className="row"
-          style={{ gap: 6, position: 'relative' }}
-          title="Filters the runs already loaded. Does not fetch anything."
-        >
+        <label className="row" style={{ gap: 6, position: 'relative' }} title={t('queue.filterHint')}>
           <Search
             size={13}
             style={{ position: 'absolute', left: 8, color: 'var(--text-tertiary)' }}
@@ -300,8 +314,8 @@ export function Queue() {
             className="input"
             type="search"
             value={search}
-            placeholder="Filter loaded runs…"
-            aria-label="Filter loaded runs"
+            placeholder={t('queue.filterPlaceholder')}
+            aria-label={t('queue.filterAria')}
             spellCheck={false}
             onChange={(event) => setSearch(event.currentTarget.value)}
             onKeyDown={(event) => {
@@ -318,21 +332,22 @@ export function Queue() {
         <select
           className="select"
           value={videoFilter}
-          aria-label="Filter by video state"
+          aria-label={t('queue.video.aria')}
           onChange={(event) => setVideoFilter(event.currentTarget.value as VideoFilter)}
         >
-          {VIDEO_OPTIONS.map((option) => (
+          {videoOptions(t).map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
             </option>
           ))}
         </select>
 
-        <Tooltip
-          label="Only runs sharing a video"
-          detail="A shared link is a flag, not a verdict. Re-uploads and multi-category runs legitimately share one."
-        >
-          <Checkbox checked={onlyDuplicates} onChange={setOnlyDuplicates} label="Duplicates" />
+        <Tooltip label={t('queue.duplicates.hint')} detail={t('queue.duplicates.detail')}>
+          <Checkbox
+            checked={onlyDuplicates}
+            onChange={setOnlyDuplicates}
+            label={t('queue.duplicates')}
+          />
         </Tooltip>
 
         <div className="toolbar__spacer" />
@@ -340,14 +355,11 @@ export function Queue() {
         {checking && (
           <span className="row" style={{ gap: 6, fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)' }}>
             <Spinner />
-            Checking {checkProgress.done}/{checkProgress.total}
+            {t('queue.checking', { done: checkProgress.done, total: checkProgress.total })}
           </span>
         )}
 
-        <Tooltip
-          label="Check every video link"
-          detail="Asks each provider whether the video is viewable. A failed check is reported as “not checked”, never as a problem."
-        >
+        <Tooltip label={t('queue.checkVideos.hint')} detail={t('queue.checkVideos.detail')}>
           <button
             type="button"
             className="btn btn--sm"
@@ -355,7 +367,7 @@ export function Queue() {
             disabled={checking || total === 0}
           >
             <Video size={13} />
-            Check videos
+            {t('queue.checkVideos')}
           </button>
         </Tooltip>
 
@@ -364,18 +376,18 @@ export function Queue() {
           className="btn btn--sm"
           onClick={() => setFastReview(true)}
           disabled={runs.length === 0}
-          title="Review runs one at a time, advancing automatically"
+          title={t('queue.fastReviewHint')}
         >
           <Zap size={13} />
-          Fast Review
+          {t('queue.fastReview')}
         </button>
 
         <button
           type="button"
           className="btn btn--sm btn--icon"
           onClick={(event) => openToolbarMenu(event, columnMenu())}
-          title="Choose visible columns"
-          aria-label="Choose visible columns"
+          title={t('queue.columns')}
+          aria-label={t('queue.columns')}
         >
           <Columns3 size={13} />
         </button>
@@ -384,19 +396,19 @@ export function Queue() {
           type="button"
           className="btn btn--sm btn--icon"
           onClick={(event) => openToolbarMenu(event, exportMenu())}
-          title="Export these runs"
-          aria-label="Export these runs"
+          title={t('queue.export')}
+          aria-label={t('queue.export')}
           disabled={exporting}
         >
           {exporting ? <Spinner /> : <Download size={13} />}
         </button>
 
-        <Tooltip label="Reset every filter" detail="Returns to pending runs in your own games.">
+        <Tooltip label={t('queue.reset.hint')} detail={t('queue.reset.detail')}>
           <button
             type="button"
             className="btn btn--sm btn--icon"
             onClick={() => void resetFilter()}
-            aria-label="Reset filters"
+            aria-label={t('queue.reset')}
           >
             <RotateCcw size={13} />
           </button>
@@ -407,11 +419,7 @@ export function Queue() {
         <div style={{ padding: '10px 12px 0' }}>
           <div className="notice notice--unknown">
             <Filter size={15} />
-            <span>
-              Speedrun.com returned the maximum this fetch asked for, so there are
-              probably more pending runs than the {formatNumber(total)} shown. Narrow
-              the filter, or raise the queue size in Settings.
-            </span>
+            <span>{t('queue.truncated', { count: formatNumber(total) })}</span>
           </div>
         </div>
       )}
@@ -433,27 +441,27 @@ export function Queue() {
             <div className="page" style={{ display: 'grid', placeItems: 'center' }}>
               <div className="col" style={{ alignItems: 'center', gap: 12 }}>
                 <Spinner size="lg" accent />
-                <span className="muted">Loading your review queue…</span>
+                <span className="muted">{t('queue.loading')}</span>
               </div>
             </div>
           ) : runs.length === 0 ? (
             <div className="page">
               <EmptyState
                 icon={<Inbox size={26} />}
-                title={total === 0 ? 'Nothing is waiting' : 'No runs match these filters'}
+                title={total === 0 ? t('queue.empty') : t('queue.noMatch')}
                 hint={
                   total === 0
-                    ? 'Every run in the games you moderate has been handled.'
-                    : `${formatNumber(total)} runs are loaded, but none match the filter box, video state or duplicate toggle.`
+                    ? t('queue.emptyHint')
+                    : t('queue.noMatchHint', { count: formatNumber(total) })
                 }
                 action={
                   total > 0 ? (
                     <button type="button" className="btn" onClick={() => void resetFilter()}>
-                      Clear filters
+                      {t('queue.clearFilters')}
                     </button>
                   ) : (
                     <button type="button" className="btn" onClick={() => void load(true)}>
-                      Refresh
+                      {t('common.refresh')}
                     </button>
                   )
                 }
@@ -475,7 +483,9 @@ export function Queue() {
 
           {selectionSize > 0 && !bulk && (
             <div className="bulkbar">
-              <span className="bulkbar__count">{plural(selectionSize, 'run')} selected</span>
+              <span className="bulkbar__count">
+                {t('queue.bulk.selected', { runs: plural(selectionSize, 'run') })}
+              </span>
 
               <button
                 type="button"
@@ -483,7 +493,7 @@ export function Queue() {
                 onClick={() => void bulkAction('verify', selectedRuns())}
               >
                 <Check size={13} />
-                Verify all
+                {t('queue.bulk.verifyAll')}
               </button>
 
               <button
@@ -492,17 +502,17 @@ export function Queue() {
                 onClick={() => setRejecting(selectedRuns())}
               >
                 <Ban size={13} />
-                Reject all…
+                {t('queue.bulk.rejectAll')}
               </button>
 
               <button
                 type="button"
                 className="btn btn--sm btn--danger"
                 onClick={() => void bulkAction('delete', selectedRuns())}
-                title="Permanently removes these runs from Speedrun.com"
+                title={t('queue.bulk.deleteHint')}
               >
                 <Trash2 size={13} />
-                Delete…
+                {t('queue.bulk.deleteAll')}
               </button>
 
               <div className="toolbar__divider" />
@@ -514,19 +524,19 @@ export function Queue() {
                   const ids = selectedRuns()
                     .map((run) => run.id)
                     .join('\n');
-                  void copyToClipboard(ids, `${selectionSize} run ids copied`);
+                  void copyToClipboard(ids, t('queue.bulk.idsCopied', { count: selectionSize }));
                 }}
-                title="Copy the selected run ids"
+                title={t('queue.bulk.copyIdsHint')}
               >
                 <Copy size={13} />
-                Copy ids
+                {t('queue.bulk.copyIds')}
               </button>
 
               <div className="toolbar__spacer" />
 
               <button type="button" className="btn btn--sm btn--ghost" onClick={clearSelection}>
                 <X size={13} />
-                Clear
+                {t('common.clear')}
               </button>
             </div>
           )}
@@ -577,7 +587,7 @@ export function Queue() {
         <FailureReport
           onRetry={() => void retryFailures()}
           onDismiss={dismissBulk}
-          onCopy={() => void copyToClipboard(failureSummary(bulk), 'Failure list copied')}
+          onCopy={() => void copyToClipboard(failureSummary(bulk), t('bulk.failureListCopied'))}
         />
       )}
     </div>
@@ -587,30 +597,35 @@ export function Queue() {
 /* ------------------------------------------------------------------- bulk */
 
 /**
- * Present and past tense per action, spelled out.
+ * Catalogue keys per action, in progress and once finished.
  *
- * Deriving "verified" from "Verifying" by chopping the suffix produces
- * "Verifyed"; English is not worth the cleverness.
+ * Whole sentences rather than a verb the code conjugates: "Verifying" +
+ * " 3/10" happens to work in English and falls apart everywhere else, where
+ * the count governs the ending of the verb and the noun both.
  */
-const ACTION_WORDS = {
-  verify: { present: 'Verifying', past: 'Verified' },
-  reject: { present: 'Rejecting', past: 'Rejected' },
-  delete: { present: 'Deleting', past: 'Deleted' },
-} as const;
+const ACTION_KEYS = {
+  verify: { running: 'bulk.progress.verify', done: 'bulk.progress.verifyDone', failed: 'bulk.failed.verify' },
+  reject: { running: 'bulk.progress.reject', done: 'bulk.progress.rejectDone', failed: 'bulk.failed.reject' },
+  delete: { running: 'bulk.progress.delete', done: 'bulk.progress.deleteDone', failed: 'bulk.failed.delete' },
+} as const satisfies Record<string, Record<string, TranslationKey>>;
 
 /** Live progress for a running batch, and the outcome once it finishes. */
 function BulkProgressBar() {
+  const t = useT();
   const bulk = useModeration((state) => state.bulk);
   const cancelBulk = useModeration((state) => state.cancelBulk);
   const dismissBulk = useModeration((state) => state.dismissBulk);
   if (!bulk) return null;
 
-  const words = ACTION_WORDS[bulk.action];
+  const keys = ACTION_KEYS[bulk.action];
 
   return (
     <div className="bulkbar">
       <span className="bulkbar__count">
-        {bulk.finished ? words.past : words.present} {bulk.completed}/{bulk.total}
+        {t(bulk.finished ? keys.done : keys.running, {
+          done: bulk.completed,
+          total: bulk.total,
+        })}
       </span>
 
       <div style={{ flex: 1, minWidth: 120, maxWidth: 320 }}>
@@ -622,7 +637,7 @@ function BulkProgressBar() {
       </div>
 
       <span className="muted" style={{ fontSize: 'var(--text-xs)' }}>
-        {bulk.succeeded} succeeded · {bulk.failed} failed
+        {t('bulk.counts', { succeeded: bulk.succeeded, failed: bulk.failed })}
       </span>
 
       <div className="toolbar__spacer" />
@@ -635,12 +650,12 @@ function BulkProgressBar() {
           disabled={bulk.cancelling}
         >
           {bulk.cancelling ? <Spinner /> : <SkipForward size={13} />}
-          {bulk.cancelling ? 'Stopping…' : 'Stop after this run'}
+          {bulk.cancelling ? t('bulk.stopping') : t('bulk.stopAfter')}
         </button>
       ) : (
         <button type="button" className="btn btn--sm btn--ghost" onClick={dismissBulk}>
           <X size={13} />
-          Dismiss
+          {t('common.dismiss')}
         </button>
       )}
     </div>
@@ -662,6 +677,7 @@ function FailureReport({
   onDismiss: () => void;
   onCopy: () => void;
 }) {
+  const t = useT();
   const bulk = useModeration((state) => state.bulk);
   if (!bulk) return null;
 
@@ -673,19 +689,25 @@ function FailureReport({
         <div className="row">
           <Ban size={15} />
           <strong style={{ fontSize: 'var(--text-sm)' }}>
-            {plural(bulk.failures.length, 'run')} could not be{' '}
-            {ACTION_WORDS[bulk.action].past.toLowerCase()}
+            {t(ACTION_KEYS[bulk.action].failed, {
+              runs: plural(bulk.failures.length, 'run'),
+            })}
           </strong>
           <div className="toolbar__spacer" />
           <button type="button" className="btn btn--sm" onClick={onCopy}>
             <Copy size={13} />
-            Copy details
+            {t('bulk.copyDetails')}
           </button>
           <button type="button" className="btn btn--sm" onClick={onRetry}>
             <RotateCcw size={13} />
-            Retry {retryable > 0 ? `(${retryable} look retryable)` : 'these'}
+            {retryable > 0 ? t('bulk.retryCount', { count: retryable }) : t('bulk.retry')}
           </button>
-          <button type="button" className="btn btn--sm btn--ghost btn--icon" onClick={onDismiss} aria-label="Dismiss">
+          <button
+            type="button"
+            className="btn btn--sm btn--ghost btn--icon"
+            onClick={onDismiss}
+            aria-label={t('common.dismiss')}
+          >
             <X size={13} />
           </button>
         </div>

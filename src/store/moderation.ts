@@ -14,6 +14,8 @@ import {
   sendNotification,
 } from '@tauri-apps/plugin-notification';
 
+import { plural } from '../format';
+import { t, type TranslationKey } from '../i18n';
 import { moderation as ipc } from '../ipc';
 import type { ActionTarget, BulkProgress, BulkResult, ModerationActionName, RunSummary } from '../types';
 import { postWebhook, runEvent } from './integrations';
@@ -36,6 +38,64 @@ export function targetOf(run: RunSummary): ActionTarget {
     },
   };
 }
+
+/**
+ * "Half-Life — Any% by pilotwave in 21:02", for a confirmation dialog.
+ *
+ * Exported because the rejection dialog names the run the same way; two copies of
+ * this would drift.
+ *
+ * Two whole sentences rather than one with an optional tail, because a run with
+ * no time must not leave a dangling preposition in any of the four languages.
+ */
+export function runLine(run: RunSummary): string {
+  const vars = {
+    game: run.gameName ?? t('common.unknownGame'),
+    category: run.categoryName ?? t('common.unknownCategory'),
+    runner: run.playerLabel,
+  };
+  return run.primaryDisplay
+    ? t('mod.runLineWithTime', { ...vars, time: run.primaryDisplay })
+    : t('mod.runLine', vars);
+}
+
+/**
+ * What a batch is called — the same name the history log gives it, so a toast
+ * and the log entry it produced do not read as two different operations.
+ */
+const BULK_OPERATION: Record<ModerationActionName, TranslationKey> = {
+  verify: 'history.op.bulkVerify',
+  reject: 'history.op.bulkReject',
+  delete: 'history.op.bulkDelete',
+};
+
+/**
+ * The confirmation wording for each bulk action.
+ *
+ * Whole sentences per action rather than a verb interpolated into a shared
+ * template: "Verify 3 runs?" and "Подтвердить 3 рана?" do not share a shape, and
+ * the count needs [`plural`] anyway.
+ */
+const BULK_CONFIRM: Record<
+  ModerationActionName,
+  { title: TranslationKey; body: TranslationKey; confirm: TranslationKey }
+> = {
+  verify: {
+    title: 'dialog.verifyMany.title',
+    body: 'dialog.verifyMany.message',
+    confirm: 'action.verifySelected',
+  },
+  reject: {
+    title: 'dialog.rejectMany.title',
+    body: 'dialog.rejectMany.message',
+    confirm: 'action.rejectSelected',
+  },
+  delete: {
+    title: 'dialog.deleteMany.title',
+    body: 'dialog.deleteMany.message',
+    confirm: 'action.deleteSelected',
+  },
+};
 
 export interface BulkRun {
   batchId: string | null;
@@ -93,6 +153,41 @@ function afterAction(runIds: string[]) {
 }
 
 /**
+ * Verdicts this app produced itself, so the watcher's verdict feeds do not
+ * announce the same decision twice.
+ *
+ * Those feeds exist to catch a verdict made elsewhere — on the Speedrun.com site,
+ * or by another moderator — and the API does not say who reached it. Without this
+ * ledger every approval and rejection made in this window would post to Discord
+ * twice: once the moment it succeeded, and again when the feed noticed it.
+ *
+ * Entries expire. A run can only be judged once, so a permanent set would only
+ * grow; the window has to outlast the feed's own lag and nothing more.
+ */
+const OWN_VERDICT_TTL = 10 * 60 * 1000;
+const ownVerdicts = new Map<string, number>();
+
+/** Records that this app judged these runs, and has already reported it. */
+function noteOwnVerdict(runIds: string[]): void {
+  const now = Date.now();
+  for (const [id, at] of ownVerdicts) {
+    if (now - at > OWN_VERDICT_TTL) ownVerdicts.delete(id);
+  }
+  for (const id of runIds) ownVerdicts.set(id, now);
+}
+
+/** True when the verdict on this run came from this window. */
+export function wasOwnVerdict(runId: string): boolean {
+  const at = ownVerdicts.get(runId);
+  if (at === undefined) return false;
+  if (Date.now() - at > OWN_VERDICT_TTL) {
+    ownVerdicts.delete(runId);
+    return false;
+  }
+  return true;
+}
+
+/**
  * Posts the half of a batch that actually succeeded.
  *
  * Deletions produce nothing: the five webhook events the moderator can turn on
@@ -110,13 +205,13 @@ function postBatch(
   const detail = action === 'reject' ? (reason?.trim() ?? null) : null;
 
   const byId = new Map(runs.map((run) => [run.id, run]));
-  const events = result.results
+  const judged = result.results
     .filter((item) => item.success)
     .map((item) => byId.get(item.runId))
-    .filter((run): run is RunSummary => run !== undefined)
-    .map((run) => runEvent(kind, run, detail));
+    .filter((run): run is RunSummary => run !== undefined);
 
-  postWebhook(events);
+  noteOwnVerdict(judged.map((run) => run.id));
+  postWebhook(judged.map((run) => runEvent(kind, run, detail)));
 }
 
 export const useModeration = create<ModerationState>((set, get) => ({
@@ -128,11 +223,9 @@ export const useModeration = create<ModerationState>((set, get) => ({
     const { settings } = useSession.getState();
     if (settings.confirmVerify) {
       const ok = await ui.confirm({
-        title: 'Verify this run?',
-        message: `${run.gameName ?? 'Unknown game'} — ${run.categoryName ?? 'Unknown category'} by ${run.playerLabel}${
-          run.primaryDisplay ? ` in ${run.primaryDisplay}` : ''
-        }. This marks the run verified on Speedrun.com.`,
-        confirmLabel: 'Verify',
+        title: t('dialog.verify.title'),
+        message: t('dialog.verify.message', { run: runLine(run) }),
+        confirmLabel: t('action.verify'),
       });
       if (!ok) return false;
     }
@@ -140,15 +233,19 @@ export const useModeration = create<ModerationState>((set, get) => ({
     setBusy(run.id, true);
     try {
       await ipc.verify(targetOf(run));
-      ui.success('Run verified', run.gameName ?? undefined);
+      ui.success(t('toast.verified'), run.gameName ?? undefined);
       afterAction([run.id]);
       // Not awaited and never allowed to fail the action: the run is already
       // verified on Speedrun.com by this point, and a Discord outage is not a
       // reason to tell the moderator their verification failed.
+      //
+      // Noted first, so the verified feed recognises this verdict as ours and
+      // does not post a second embed for it a few seconds from now.
+      noteOwnVerdict([run.id]);
       postWebhook([runEvent('approved', run)]);
       return true;
     } catch (err) {
-      ui.error('Could not verify the run', err);
+      ui.error(t('mod.verifyFailed'), err);
       return false;
     } finally {
       setBusy(run.id, false);
@@ -158,21 +255,24 @@ export const useModeration = create<ModerationState>((set, get) => ({
   reject: async (run, reason) => {
     const trimmed = reason.trim();
     if (!trimmed) {
-      ui.warning('A reason is required', 'Speedrun.com shows your reason to the runner.');
+      ui.warning(t('mod.reasonRequired'), t('mod.reasonRequiredHint'));
       return false;
     }
 
     setBusy(run.id, true);
     try {
       await ipc.reject(targetOf(run), trimmed);
-      ui.success('Run rejected', run.gameName ?? undefined);
+      ui.success(t('toast.rejected'), run.gameName ?? undefined);
       afterAction([run.id]);
       // The reason goes with it: it is what the runner was told, so a channel
-      // watching rejections is otherwise left guessing why.
+      // watching rejections is otherwise left guessing why. Noted as ours so the
+      // rejected feed does not repeat it — and the feed has no reason text, so
+      // this copy is also the better one.
+      noteOwnVerdict([run.id]);
       postWebhook([runEvent('rejected', run, trimmed)]);
       return true;
     } catch (err) {
-      ui.error('Could not reject the run', err);
+      ui.error(t('mod.rejectFailed'), err);
       return false;
     } finally {
       setBusy(run.id, false);
@@ -183,22 +283,22 @@ export const useModeration = create<ModerationState>((set, get) => ({
     // Deletion is irreversible on Speedrun.com, so it always confirms and the
     // dialog says so plainly, regardless of the confirm-verify preference.
     const ok = await ui.confirm({
-      title: 'Delete this run permanently?',
-      message: `${run.gameName ?? 'Unknown game'} — ${run.categoryName ?? 'Unknown category'} by ${run.playerLabel}. Deleting removes the run from Speedrun.com entirely. This cannot be undone, and rejecting is usually the right action instead.`,
+      title: t('dialog.delete.title'),
+      message: t('dialog.delete.message', { run: runLine(run) }),
       danger: true,
-      confirmLabel: 'Delete permanently',
-      acknowledge: 'I understand this run cannot be recovered.',
+      confirmLabel: t('dialog.delete.confirm'),
+      acknowledge: t('dialog.delete.acknowledge'),
     });
     if (!ok) return false;
 
     setBusy(run.id, true);
     try {
       await ipc.delete(targetOf(run), true);
-      ui.success('Run deleted', run.gameName ?? undefined);
+      ui.success(t('toast.deleted'), run.gameName ?? undefined);
       afterAction([run.id]);
       return true;
     } catch (err) {
-      ui.error('Could not delete the run', err);
+      ui.error(t('mod.deleteFailed'), err);
       return false;
     } finally {
       setBusy(run.id, false);
@@ -208,24 +308,25 @@ export const useModeration = create<ModerationState>((set, get) => ({
   bulkAction: async (action, runs, reason) => {
     if (runs.length === 0) return null;
     if (get().bulk && !get().bulk?.finished) {
-      ui.warning('A bulk operation is already running');
+      ui.warning(t('mod.bulkRunning'));
       return null;
     }
 
-    const verb = action === 'verify' ? 'Verify' : action === 'reject' ? 'Reject' : 'Delete';
+    const copy = BULK_CONFIRM[action];
+    const counted = plural(runs.length, 'run');
+    const trimmedReason = reason?.trim() ?? '';
     const confirmed = await ui.confirm({
-      title: `${verb} ${runs.length} run${runs.length === 1 ? '' : 's'}?`,
+      title: t(copy.title, { runs: counted }),
       message:
-        action === 'delete'
-          ? `${runs.length} run${runs.length === 1 ? '' : 's'} will be removed from Speedrun.com permanently. This cannot be undone.`
-          : `${runs.length} run${runs.length === 1 ? '' : 's'} will be ${action === 'verify' ? 'verified' : 'rejected'} on Speedrun.com${
-              reason ? ` with the reason: “${reason}”` : ''
-            }. Runs are processed one at a time and you can stop partway.`,
+        action === 'reject' && trimmedReason !== ''
+          ? t('dialog.rejectMany.messageWithReason', {
+              runs: counted,
+              reason: trimmedReason,
+            })
+          : t(copy.body, { runs: counted }),
       danger: action === 'delete',
-      confirmLabel: `${verb} ${runs.length}`,
-      ...(action === 'delete'
-        ? { acknowledge: 'I understand these runs cannot be recovered.' }
-        : {}),
+      confirmLabel: t(copy.confirm, { count: runs.length }),
+      ...(action === 'delete' ? { acknowledge: t('dialog.deleteMany.acknowledge') } : {}),
     });
     if (!confirmed) return null;
 
@@ -254,7 +355,7 @@ export const useModeration = create<ModerationState>((set, get) => ({
         .filter((item) => !item.success)
         .map((item) => ({
           runId: item.runId,
-          error: item.error ?? 'Failed for an unreported reason.',
+          error: item.error ?? t('mod.unreportedFailure'),
           retryable: item.retryable,
         }));
 
@@ -278,20 +379,24 @@ export const useModeration = create<ModerationState>((set, get) => ({
       afterAction(result.results.filter((item) => item.success).map((item) => item.runId));
       postBatch(action, runs, result, reason);
 
-      const summary = `${result.succeeded} succeeded, ${result.failed} failed`;
-      if (result.failed === 0) ui.success(`Bulk ${action} finished`, summary);
-      else if (result.succeeded === 0) ui.error(`Bulk ${action} failed`, undefined);
-      else ui.warning(`Bulk ${action} finished with failures`, summary);
+      const operation = t(BULK_OPERATION[action]);
+      const summary = t('bulk.counts', {
+        succeeded: result.succeeded,
+        failed: result.failed,
+      });
+      if (result.failed === 0) ui.success(t('mod.bulk.finished', { operation }), summary);
+      else if (result.succeeded === 0) ui.error(t('mod.bulk.failed', { operation }), undefined);
+      else ui.warning(t('mod.bulk.partly', { operation }), summary);
 
       if (useSession.getState().settings.notifyOnBulkComplete) {
-        void notifyDesktop(`Bulk ${action} finished`, summary);
+        void notifyDesktop(t('mod.bulk.finished', { operation }), summary);
       }
       return result;
     } catch (err) {
       set((state) => ({
         bulk: state.bulk ? { ...state.bulk, finished: true, cancelling: false } : null,
       }));
-      ui.error(`Bulk ${action} could not run`, err);
+      ui.error(t('mod.bulk.couldNotRun', { operation: t(BULK_OPERATION[action]) }), err);
       return null;
     }
   },
@@ -307,9 +412,9 @@ export const useModeration = create<ModerationState>((set, get) => ({
     set({ bulk: { ...bulk, cancelling: true } });
     try {
       await ipc.cancelBulk(bulk.batchId);
-      ui.info('Stopping after the current run');
+      ui.info(t('mod.stopping'));
     } catch (err) {
-      ui.error('Could not stop the batch', err);
+      ui.error(t('mod.stopFailed'), err);
     }
   },
 
@@ -355,7 +460,7 @@ export const useModeration = create<ModerationState>((set, get) => ({
                 .filter((item) => !item.success)
                 .map((item) => ({
                   runId: item.runId,
-                  error: item.error ?? 'Failed for an unreported reason.',
+                  error: item.error ?? t('mod.unreportedFailure'),
                   retryable: item.retryable,
                 })),
               finished: true,
@@ -364,11 +469,14 @@ export const useModeration = create<ModerationState>((set, get) => ({
       }));
       afterAction(result.results.filter((item) => item.success).map((item) => item.runId));
       postBatch(bulk.action, runs, result, lastBatchReason);
-      ui.info('Retry finished', `${result.succeeded} succeeded, ${result.failed} failed`);
+      ui.info(
+        t('mod.retryFinished'),
+        t('bulk.counts', { succeeded: result.succeeded, failed: result.failed }),
+      );
       return result;
     } catch (err) {
       set((state) => ({ bulk: state.bulk ? { ...state.bulk, finished: true } : null }));
-      ui.error('Retry could not run', err);
+      ui.error(t('mod.retryFailed'), err);
       return null;
     }
   },
@@ -382,7 +490,7 @@ export const useModeration = create<ModerationState>((set, get) => ({
       if (!progress.currentOk) {
         failures.push({
           runId: progress.currentRunId,
-          error: progress.currentError ?? 'Failed for an unreported reason.',
+          error: progress.currentError ?? t('mod.unreportedFailure'),
           retryable: false,
         });
       }
@@ -423,6 +531,6 @@ async function notifyDesktop(title: string, body: string): Promise<void> {
 
 /** Formats a bulk failure list for the report panel. */
 export function failureSummary(bulk: BulkRun): string {
-  if (bulk.failures.length === 0) return 'No failures.';
+  if (bulk.failures.length === 0) return t('mod.noFailures');
   return bulk.failures.map((f) => `${f.runId}: ${f.error}`).join('\n');
 }

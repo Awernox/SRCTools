@@ -145,6 +145,10 @@ export const PLURAL_NOUNS = [
   'entry',
   'expiredEntry',
   'batch',
+  'critical',
+  'warning',
+  'note',
+  'row',
 ] as const;
 
 export type PluralNoun = (typeof PLURAL_NOUNS)[number];

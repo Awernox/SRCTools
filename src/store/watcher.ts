@@ -36,8 +36,9 @@ import { isProblem } from '../types';
 import { FAILURES_BEFORE_ALERT } from '../watcher/intervals';
 import { useApp } from './app';
 import { postWebhook, runEvent, useWebhook, videoEvent } from './integrations';
+import { wasOwnVerdict } from './moderation';
 import { useQueue, worstStatus } from './queue';
-import { useSession } from './session';
+import { useSession, type Settings } from './session';
 import { ui } from './ui';
 
 interface WatcherState {
@@ -65,7 +66,30 @@ interface WatcherState {
   onStatus: (status: WatcherStatus) => void;
   /** Handles `srctools://new-runs`. */
   onRuns: (event: NewRunsEvent) => void;
+  /** Handles `srctools://approved-runs`. */
+  onApproved: (event: NewRunsEvent) => void;
+  /** Handles `srctools://rejected-runs`. */
+  onRejected: (event: NewRunsEvent) => void;
   clearUnread: () => void;
+}
+
+/**
+ * Whether anything the moderator switched on needs the loop to be polling.
+ *
+ * The loop feeds every announcement surface there is, so gating it on the
+ * desktop-notification setting alone meant a moderator who wanted their Discord
+ * channel told but their own desktop left quiet got neither: the poll that finds
+ * the run never happened, so nothing downstream of it could.
+ *
+ * Exported because Settings says which of these is the reason the watcher is
+ * stopped, and two copies of this rule would disagree.
+ */
+export function watcherWanted(settings: Settings, webhookReady: boolean): boolean {
+  return (
+    settings.notifyNewRuns ||
+    settings.notifyVideoProblems ||
+    (settings.webhookEnabled && webhookReady)
+  );
 }
 
 export const useWatcher = create<WatcherState>((set, get) => ({
@@ -80,7 +104,8 @@ export const useWatcher = create<WatcherState>((set, get) => ({
 
   sync: async () => {
     const { settings, hasApiKey } = useSession.getState();
-    const enabled = settings.notifyNewRuns && hasApiKey;
+    const enabled =
+      hasApiKey && watcherWanted(settings, useWebhook.getState().status.configured);
     try {
       const status = await watcherIpc.configure(enabled, settings.checkInterval);
       get().onStatus(status);
@@ -168,6 +193,79 @@ export const useWatcher = create<WatcherState>((set, get) => ({
     // is downstream of a poll that has already been timed, and awaiting it here
     // would only delay the store's own return.
     void report_(fresh);
+  },
+
+  onApproved: (event) => {
+    // A verdict reached in this window was posted the moment it succeeded, so the
+    // feed's copy of it is a duplicate rather than news.
+    const approved = event.runs.filter((run) => !wasOwnVerdict(run.id));
+    if (approved.length === 0) return;
+
+    // An approval asks nothing of this moderator, so it gets no Windows
+    // notification and no sound — those are for a queue that needs attention. It
+    // gets the channel, which is what an approval log is for, one in-app toast so
+    // the app is not silent about something it noticed, and it leaves the pending
+    // queue, because it is no longer pending.
+    postWebhook(approved.map((run) => runEvent('approved', run)));
+    useQueue.getState().removeRuns(approved.map((run) => run.id));
+
+    const newest = approved[0];
+    if (!newest) return;
+    const single = approved.length === 1;
+    ui.notify({
+      kind: 'info',
+      title: single
+        ? t('notify.approved.title')
+        : t('notify.approved.titleMany', { count: approved.length }),
+      message: single
+        ? t('notify.approved.body', {
+            game: newest.gameName ?? t('common.unknown'),
+            player: newest.playerLabel,
+          })
+        : t('notify.approved.bodyMany', { count: approved.length }),
+      action: {
+        label: t('action.openDetail'),
+        run: () => {
+          useApp.getState().go('queue');
+          useApp.getState().openDetail(newest.id);
+        },
+      },
+    });
+  },
+
+  onRejected: (event) => {
+    const rejected = event.runs.filter((run) => !wasOwnVerdict(run.id));
+    if (rejected.length === 0) return;
+
+    // Same reasoning as an approval, and the same two consequences: the channel
+    // and one toast. The reason comes from the feed here rather than from a
+    // dialog in this window, so it may be absent — `runEvent` leaves the field
+    // out rather than inventing one.
+    postWebhook(
+      rejected.map((run) => runEvent('rejected', run, run.rejectionReason)),
+    );
+    useQueue.getState().removeRuns(rejected.map((run) => run.id));
+
+    const newest = rejected[0];
+    if (!newest) return;
+    const single = rejected.length === 1;
+    ui.notify({
+      kind: 'info',
+      title: single ? t('notify.rejected.title') : t('notify.rejected.titleMany', { count: rejected.length }),
+      message: single
+        ? t('notify.rejected.body', {
+            game: newest.gameName ?? t('common.unknown'),
+            player: newest.playerLabel,
+          })
+        : t('notify.rejected.bodyMany', { count: rejected.length }),
+      action: {
+        label: t('action.openDetail'),
+        run: () => {
+          useApp.getState().go('queue');
+          useApp.getState().openDetail(newest.id);
+        },
+      },
+    });
   },
 
   clearUnread: () => set({ unread: [] }),

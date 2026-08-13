@@ -9,18 +9,13 @@
 import { Keyboard } from 'lucide-react';
 
 import { KeyHint, Modal } from './ui';
-import { SHORTCUT_DEFINITIONS, type ShortcutDefinition } from '../shortcuts';
+import { useT } from '../i18n';
+import { SHORTCUT_DEFINITIONS, SHORTCUT_GROUPS } from '../shortcuts';
 import { useApp } from '../store/app';
 import { useSession } from '../store/session';
 
-const GROUPS: ShortcutDefinition['group'][] = [
-  'Moderation',
-  'Navigation',
-  'Selection',
-  'Application',
-];
-
 export function ShortcutHelp() {
+  const t = useT();
   const open = useApp((state) => state.helpOpen);
   const close = useApp((state) => state.toggleHelp);
   const shortcuts = useSession((state) => state.shortcuts);
@@ -31,16 +26,16 @@ export function ShortcutHelp() {
     <Modal
       title={
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-          <Keyboard size={15} /> Keyboard shortcuts
+          <Keyboard size={15} /> {t('settings.keyboard.title')}
         </span>
       }
       onClose={() => close(false)}
       width={560}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {GROUPS.map((group) => (
+        {SHORTCUT_GROUPS.map((group) => (
           <div key={group}>
-            <div className="section__title">{group}</div>
+            <div className="section__title">{t(`settings.keyboard.group.${group}`)}</div>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <tbody>
                 {SHORTCUT_DEFINITIONS.filter((definition) => definition.group === group).map(
@@ -53,9 +48,9 @@ export function ShortcutHelp() {
                           verticalAlign: 'baseline',
                         }}
                       >
-                        {definition.label}
+                        {t(definition.labelKey)}
                         <div className="dim" style={{ fontSize: 'var(--text-xs)', marginTop: 1 }}>
-                          {definition.description}
+                          {t(definition.descriptionKey)}
                         </div>
                       </td>
                       <td style={{ padding: '5px 0', textAlign: 'right', verticalAlign: 'middle' }}>
@@ -69,9 +64,7 @@ export function ShortcutHelp() {
           </div>
         ))}
         <p className="dim" style={{ fontSize: 'var(--text-xs)', lineHeight: 1.6, marginTop: 2 }}>
-          Bindings marked with a lock in Settings cannot be changed: they are
-          conventions the app (and Windows) depend on. Every other key can be
-          rebound under Settings → Keyboard.
+          {t('shortcutHelp.footer')}
         </p>
       </div>
     </Modal>

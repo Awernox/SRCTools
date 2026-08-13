@@ -18,3 +18,9 @@ npm-debug.log*
 .env
 .env.local
 .env.*.local
+
+src-tauri/target-v1.1.0/
+
+src-tauri/target-v1.1.0-final/
+
+srctools_server_analysis.txt

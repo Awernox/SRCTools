@@ -23,7 +23,6 @@ import {
   Download,
   ExternalLink,
   Eye,
-  Filter,
   FolderOpen,
   Gamepad2,
   Gauge,
@@ -66,6 +65,7 @@ import {
   Segmented,
   Skeleton,
   Spinner,
+  Switch,
   Tabs,
 } from '../components/ui';
 import {
@@ -77,26 +77,29 @@ import {
   plural,
   ABSENT,
 } from '../format';
-import { useT, LANGUAGES, LANGUAGE_NAMES, type Language, type Translate } from '../i18n';
+import { useT, LANGUAGES, LANGUAGE_NAMES, type Language, type Translate, type TranslationKey } from '../i18n';
 import { auth, errorText, prefs, sound as soundIpc } from '../ipc';
 import { copyToClipboard, openExternal } from '../open';
-import { SHORTCUT_DEFINITIONS, eventBinding, type ShortcutDefinition } from '../shortcuts';
+import { SHORTCUT_DEFINITIONS, SHORTCUT_GROUPS, eventBinding, type ShortcutDefinition } from '../shortcuts';
 import { dropCustom, loadCustomSound, playNotificationSound } from '../sound';
 import { useLivePresence } from '../hooks/usePresence';
+import { useApp } from '../store/app';
 import { useDiscord, useWebhook } from '../store/integrations';
 import { QUEUE_COLUMNS } from '../store/queue';
 import {
   useSession,
   type Density,
   type Settings as SettingsValues,
+  type SidebarPosition,
   type ThemeName,
 } from '../store/session';
 import { ACCENT_COLOURS, ACCENT_NAMES, DENSITIES, THEMES } from '../theme';
 import { ui } from '../store/ui';
 import { useUpdate } from '../store/update';
-import { useWatcher } from '../store/watcher';
+import { useWatcher, watcherWanted } from '../store/watcher';
 import type { CacheStats, RejectionTemplate } from '../types';
 import { CHECK_INTERVALS, isCheckInterval } from '../watcher/intervals';
+import { displayTemplate } from '../templates';
 
 const KEY_PAGE = 'https://www.speedrun.com/settings/api';
 const TWITCH_CONSOLE = 'https://dev.twitch.tv/console/apps';
@@ -111,6 +114,7 @@ const DISCORD_PORTAL = 'https://discord.com/developers/applications';
  */
 const DISCORD_ASSET_KEY = 'srclogo';
 const DISCORD_LARGE_TEXT = 'SRCTools Moderator Toolkit';
+const PROJECT_URL = 'https://github.com/Awernox/SRCTools';
 
 /** What `webhook_test` posts. Mirrors `TEST_MESSAGE` in `src-tauri/src/webhook.rs`. */
 const TEST_MESSAGE = '✅ SRCTools webhook connected';
@@ -140,14 +144,11 @@ export function Settings() {
   const t = useT();
 
   return (
-    <div className="page">
+    <div className="page settings-page">
       <div className="page__header">
         <div className="page__heading">
-          <h2 className="h1">Settings</h2>
-          <p className="page__subtitle">
-            Credentials, appearance, keyboard bindings and everything SRCTools keeps on this
-            machine.
-          </p>
+          <h2 className="h1">{t('settings.title')}</h2>
+          <p className="page__subtitle">{t('settings.subtitle')}</p>
         </div>
       </div>
 
@@ -155,14 +156,14 @@ export function Settings() {
         value={section}
         onChange={setSection}
         tabs={[
-          { value: 'account', label: 'Account' },
-          { value: 'interface', label: 'Interface' },
-          { value: 'moderation', label: 'Moderation' },
-          { value: 'notifications', label: 'Notifications' },
-          { value: 'discord', label: 'Discord' },
-          { value: 'templates', label: 'Templates' },
-          { value: 'keyboard', label: 'Keyboard' },
-          { value: 'data', label: 'Data' },
+          { value: 'account', label: t('settings.tab.account') },
+          { value: 'interface', label: t('settings.tab.appearance') },
+          { value: 'moderation', label: t('settings.tab.moderation') },
+          { value: 'notifications', label: t('settings.tab.notifications') },
+          { value: 'discord', label: t('settings.tab.discord') },
+          { value: 'templates', label: t('settings.tab.templates') },
+          { value: 'keyboard', label: t('settings.tab.keyboard') },
+          { value: 'data', label: t('settings.tab.data') },
           { value: 'about', label: t('settings.about') },
         ]}
       />
@@ -219,7 +220,7 @@ function ToggleRow({
 
   return (
     <Row label={label} hint={hint}>
-      <Checkbox checked={value} onChange={(next) => void update(setting, next)} />
+      <Switch checked={value} onChange={(next) => void update(setting, next)} label={label} />
     </Row>
   );
 }
@@ -299,6 +300,8 @@ function AccountSection() {
   const setProfile = useSession((state) => state.setProfile);
   const refreshConnection = useSession((state) => state.refreshConnection);
 
+  const t = useT();
+
   const [key, setKey] = useState('');
   const [saving, setSaving] = useState(false);
   const [keyError, setKeyError] = useState<string | null>(null);
@@ -313,7 +316,7 @@ function AccountSection() {
   const connect = async () => {
     const trimmed = key.trim();
     if (trimmed === '') {
-      setKeyError('Paste your API key first.');
+      setKeyError(t('settings.account.pasteFirst'));
       return;
     }
     setSaving(true);
@@ -325,7 +328,10 @@ function AccountSection() {
       setKey('');
       setProfile(next);
       await refreshConnection();
-      ui.success('Key saved', `Signed in as ${next.displayName}`);
+      ui.success(
+        t('settings.account.keySaved'),
+        t('settings.account.signedInAs', { name: next.displayName }),
+      );
     } catch (err) {
       setKeyError(errorText(err));
     } finally {
@@ -335,20 +341,19 @@ function AccountSection() {
 
   const disconnect = async () => {
     const ok = await ui.confirm({
-      title: 'Remove the stored API key?',
-      message:
-        'The key is deleted from the Windows credential vault. Your local history, statistics and settings are kept, but nothing that talks to Speedrun.com will work until you add a key again.',
+      title: t('settings.account.removeTitle'),
+      message: t('settings.account.removeMessage'),
       danger: true,
-      confirmLabel: 'Remove key',
+      confirmLabel: t('settings.account.removeKey'),
     });
     if (!ok) return;
     try {
       await auth.clearApiKey();
       setProfile(null);
       await refreshConnection();
-      ui.success('Key removed');
+      ui.success(t('settings.account.keyRemoved'));
     } catch (err) {
-      ui.error('Could not remove the key', err);
+      ui.error(t('settings.account.removeFailed'), err);
     }
   };
 
@@ -357,8 +362,12 @@ function AccountSection() {
     try {
       await refreshConnection();
       const status = useSession.getState().connection;
-      if (status?.connected === true) ui.success('Connected', status.message);
-      else ui.warning('Not connected', status?.message ?? 'Speedrun.com did not answer.');
+      if (status?.connected === true) ui.success(t('settings.account.connected'), status.message);
+      else
+        ui.warning(
+          t('settings.account.notConnected'),
+          status?.message ?? t('settings.account.noAnswer'),
+        );
     } finally {
       setTesting(false);
     }
@@ -366,43 +375,43 @@ function AccountSection() {
 
   return (
     <div className="col" style={{ gap: 16 }}>
-      <Card title="Speedrun.com connection" icon={<KeyRound size={13} />}>
+      <Card title={t('settings.account.connectionTitle')} icon={<KeyRound size={13} />}>
         <div className="row" style={{ gap: 10, alignItems: 'center', marginBottom: 4 }}>
           {connection === null ? (
             <Badge tone="unknown" small dot>
-              Checking
+              {t('settings.account.checking')}
             </Badge>
           ) : connection.connected ? (
             <Badge tone="ok" small dot>
-              Connected
+              {t('settings.account.connected')}
             </Badge>
           ) : (
             <Badge tone={hasApiKey ? 'danger' : 'unknown'} small dot>
-              {hasApiKey ? 'Not working' : 'No key'}
+              {hasApiKey ? t('settings.account.notWorking') : t('settings.account.noKey')}
             </Badge>
           )}
           <span className="dim" style={{ fontSize: 'var(--text-xs)', flex: 1, minWidth: 0 }}>
-            {connection?.message ?? 'Asking Speedrun.com who this key belongs to…'}
+            {connection?.message ?? t('settings.account.asking')}
           </span>
           <button type="button" className="btn btn--sm" onClick={() => void test()} disabled={testing}>
             {testing ? <Spinner /> : connection?.connected === true ? <Wifi size={13} /> : <WifiOff size={13} />}
-            Test connection
+            {t('settings.account.test')}
           </button>
         </div>
 
         <Row
-          label="Signed in as"
+          label={t('settings.account.signedIn')}
           hint={
             profile === null
-              ? 'No account is attached yet.'
+              ? t('settings.account.noAccount')
               : profile.signupDate === null
-                ? 'Account resolved from the stored key.'
-                : `Joined Speedrun.com on ${formatDate(profile.signupDate)}.`
+                ? t('settings.account.fromKey')
+                : t('settings.account.joined', { date: formatDate(profile.signupDate) })
           }
         >
           {profile === null ? (
             <span className="dim" style={{ fontSize: 'var(--text-sm)' }}>
-              Nobody
+              {t('settings.account.nobody')}
             </span>
           ) : (
             <>
@@ -410,8 +419,8 @@ function AccountSection() {
               <button
                 type="button"
                 className="btn btn--sm btn--ghost btn--icon"
-                title="Open the profile on Speedrun.com"
-                aria-label="Open the profile on Speedrun.com"
+                title={t('settings.account.openProfile')}
+                aria-label={t('settings.account.openProfile')}
                 onClick={() => void openExternal(profile.weblink)}
                 disabled={profile.weblink === null}
               >
@@ -421,35 +430,31 @@ function AccountSection() {
           )}
         </Row>
 
-        <Row
-          label="Stored key"
-          hint="Only this masked preview is ever shown. SRCTools cannot display the key back to you, and it is never written to a log or an export."
-        >
+        <Row label={t('settings.account.stored')} hint={t('settings.account.storedHint')}>
           <span className="mono" style={{ fontSize: 'var(--text-sm)' }}>
-            {connection?.maskedKey ?? '—'}
+            {connection?.maskedKey ?? ABSENT}
           </span>
           {hasApiKey && (
             <button type="button" className="btn btn--sm btn--danger" onClick={() => void disconnect()}>
               <Trash2 size={13} />
-              Remove
+              {t('common.remove')}
             </button>
           )}
         </Row>
 
         <Row
-          label={hasApiKey ? 'Replace the key' : 'Add a key'}
+          label={hasApiKey ? t('settings.account.replace') : t('settings.account.add')}
           hint={
             <>
-              Paste a key from your{' '}
+              {t('settings.account.pasteHint')}{' '}
               <button
                 type="button"
                 className="btn btn--ghost btn--sm"
                 style={{ display: 'inline-flex', height: 18, padding: '0 3px' }}
                 onClick={() => void openExternal(KEY_PAGE)}
               >
-                Speedrun.com API settings <ExternalLink size={10} />
+                {t('settings.account.getKey')} <ExternalLink size={10} />
               </button>
-              . It is checked against your profile before anything is saved.
             </>
           }
         >
@@ -459,8 +464,8 @@ function AccountSection() {
             value={key}
             autoComplete="off"
             spellCheck={false}
-            placeholder="API key"
-            aria-label="Speedrun.com API key"
+            placeholder={t('settings.account.keyPlaceholder')}
+            aria-label={t('settings.account.keyAria')}
             onChange={(event) => {
               setKey(event.currentTarget.value);
               setKeyError(null);
@@ -477,7 +482,7 @@ function AccountSection() {
             disabled={saving}
           >
             {saving ? <Spinner /> : <ShieldCheck size={13} />}
-            Save
+            {t('common.save')}
           </button>
         </Row>
 
@@ -515,6 +520,7 @@ function TwitchCard({
   configured: boolean;
   onChanged: () => Promise<void>;
 }) {
+  const t = useT();
   const [clientId, setClientId] = useState('');
   const [clientSecret, setClientSecret] = useState('');
   const [busy, setBusy] = useState(false);
@@ -522,7 +528,7 @@ function TwitchCard({
 
   const save = async () => {
     if (clientId.trim() === '' || clientSecret.trim() === '') {
-      setError('Both the Client ID and the Client Secret are required.');
+      setError(t('settings.twitch.bothRequired'));
       return;
     }
     setBusy(true);
@@ -532,7 +538,7 @@ function TwitchCard({
       setClientId('');
       setClientSecret('');
       await onChanged();
-      ui.success('Twitch credentials saved', 'Twitch links can now be checked automatically.');
+      ui.success(t('settings.twitch.saved'), t('settings.twitch.savedHint'));
     } catch (err) {
       setError(errorText(err));
     } finally {
@@ -542,19 +548,18 @@ function TwitchCard({
 
   const clear = async () => {
     const ok = await ui.confirm({
-      title: 'Remove the Twitch credentials?',
-      message:
-        'Twitch links will still open normally, but SRCTools will report them as "could not check" instead of confirming whether the video exists.',
-      confirmLabel: 'Remove',
+      title: t('settings.twitch.removeTitle'),
+      message: t('settings.twitch.removeMessage'),
+      confirmLabel: t('common.remove'),
     });
     if (!ok) return;
     setBusy(true);
     try {
       await auth.clearTwitchCredentials();
       await onChanged();
-      ui.success('Twitch credentials removed');
+      ui.success(t('settings.twitch.removed'));
     } catch (err) {
-      ui.error('Could not remove them', err);
+      ui.error(t('settings.twitch.removeFailed'), err);
     } finally {
       setBusy(false);
     }
@@ -562,37 +567,32 @@ function TwitchCard({
 
   return (
     <Card
-      title="Twitch video checks"
+      title={t('settings.account.twitch')}
       icon={<Video size={13} />}
       actions={
         <Badge tone={configured ? 'ok' : 'unknown'} small dot>
-          {configured ? 'Configured' : 'Not configured'}
+          {configured ? t('settings.webhook.configured') : t('settings.webhook.notConfigured')}
         </Badge>
       }
     >
       <div className="notice notice--info" style={{ marginBottom: 6 }}>
         <Info size={15} />
-        <span>
-          Optional. Twitch requires an application of its own to answer questions about a video.
-          Without one, SRCTools marks Twitch links “could not check” — never as deleted, because
-          it genuinely does not know.
-        </span>
+        <span>{t('settings.twitch.intro')}</span>
       </div>
 
       <Row
-        label="Client ID"
+        label={t('settings.twitch.clientId')}
         hint={
           <>
-            Create an application in the{' '}
+            {t('settings.twitch.clientIdHint')}{' '}
             <button
               type="button"
               className="btn btn--ghost btn--sm"
               style={{ display: 'inline-flex', height: 18, padding: '0 3px' }}
               onClick={() => void openExternal(TWITCH_CONSOLE)}
             >
-              Twitch developer console <ExternalLink size={10} />
+              {t('settings.twitch.console')} <ExternalLink size={10} />
             </button>
-            . Both values are stored in the Windows credential vault.
           </>
         }
       >
@@ -601,8 +601,10 @@ function TwitchCard({
           value={clientId}
           autoComplete="off"
           spellCheck={false}
-          placeholder={configured ? 'Stored — enter to replace' : 'Client ID'}
-          aria-label="Twitch Client ID"
+          placeholder={
+            configured ? t('settings.twitch.storedPlaceholder') : t('settings.twitch.clientId')
+          }
+          aria-label={t('settings.twitch.clientIdAria')}
           onChange={(event) => {
             setClientId(event.currentTarget.value);
             setError(null);
@@ -611,15 +613,17 @@ function TwitchCard({
         />
       </Row>
 
-      <Row label="Client Secret" hint="Never displayed back, exported or logged.">
+      <Row label={t('settings.twitch.clientSecret')} hint={t('settings.twitch.clientSecretHint')}>
         <input
           className="input"
           type="password"
           value={clientSecret}
           autoComplete="off"
           spellCheck={false}
-          placeholder={configured ? 'Stored — enter to replace' : 'Client Secret'}
-          aria-label="Twitch Client Secret"
+          placeholder={
+            configured ? t('settings.twitch.storedPlaceholder') : t('settings.twitch.clientSecret')
+          }
+          aria-label={t('settings.twitch.clientSecretAria')}
           onChange={(event) => {
             setClientSecret(event.currentTarget.value);
             setError(null);
@@ -628,15 +632,15 @@ function TwitchCard({
         />
         <button type="button" className="btn btn--sm btn--primary" onClick={() => void save()} disabled={busy}>
           {busy ? <Spinner /> : <ShieldCheck size={13} />}
-          Save
+          {t('common.save')}
         </button>
       </Row>
 
       {configured && (
-        <Row label="Remove credentials" hint="Twitch checks stop; nothing else changes.">
+        <Row label={t('settings.twitch.remove')} hint={t('settings.twitch.removeHint')}>
           <button type="button" className="btn btn--sm btn--danger" onClick={() => void clear()} disabled={busy}>
             <Trash2 size={13} />
-            Remove
+            {t('common.remove')}
           </button>
         </Row>
       )}
@@ -662,6 +666,8 @@ function InterfaceSection() {
   const density = useSession((state) => state.settings.density);
   const sidebarIcons = useSession((state) => state.settings.sidebarIcons);
   const sidebarText = useSession((state) => state.settings.sidebarText);
+  const sidebarPosition = useSession((state) => state.settings.sidebarPosition);
+  const sidebarCollapsed = useApp((state) => state.layout.sidebarCollapsed);
   const hidden = useSession((state) => state.settings.hiddenColumns);
   const update = useSession((state) => state.updateSetting);
 
@@ -674,12 +680,21 @@ function InterfaceSection() {
    * Turning both sidebar options off would leave an unusable strip of nothing,
    * so the last one on refuses rather than silently re-enabling the other —
    * a switch that flips a different switch is worse than one that says no.
+   *
+   * Switching the labels back on is the exception, and it has to be: the
+   * collapse control in the top bar hides them too, and while it is engaged this
+   * checkbox would tick with nothing appearing in the sidebar. A setting that
+   * reports success and changes nothing is the worse outcome, so turning labels
+   * on expands the sidebar as well.
    */
   const setSidebar = (which: 'sidebarIcons' | 'sidebarText', next: boolean) => {
     const other = which === 'sidebarIcons' ? sidebarText : sidebarIcons;
     if (!next && !other) {
       ui.warning(t('settings.sidebar.bothOff'));
       return;
+    }
+    if (which === 'sidebarText' && next) {
+      useApp.getState().setLayout({ sidebarCollapsed: false });
     }
     void update(which, next);
   };
@@ -764,11 +779,22 @@ function InterfaceSection() {
               onChange={(next) => setSidebar('sidebarIcons', next)}
             />
             <Checkbox
-              checked={sidebarText}
+              checked={sidebarText && !sidebarCollapsed}
               label={t('settings.sidebar.text')}
               onChange={(next) => setSidebar('sidebarText', next)}
             />
           </div>
+        </Row>
+
+        <Row label={t('settings.sidebar.position')} hint={t('settings.sidebar.positionHint')}>
+          <Segmented<SidebarPosition>
+            value={sidebarPosition}
+            onChange={(next) => void update('sidebarPosition', next)}
+            options={[
+              { value: 'left', label: t('settings.sidebar.left') },
+              { value: 'right', label: t('settings.sidebar.right') },
+            ]}
+          />
         </Row>
 
         <ToggleRow
@@ -787,7 +813,7 @@ function InterfaceSection() {
             <Checkbox
               key={column.id}
               checked={!hidden.includes(column.id)}
-              label={column.label}
+              label={t(column.labelKey)}
               onChange={(visible) => toggleColumn(column.id, visible)}
             />
           ))}
@@ -800,56 +826,58 @@ function InterfaceSection() {
 /* ------------------------------------------------------------- moderation */
 
 function ModerationSection() {
+  const t = useT();
+
   return (
     <div className="col" style={{ gap: 16 }}>
-      <Card title="Confirmations" icon={<ShieldCheck size={13} />}>
+      <Card title={t('settings.moderation.confirmations')} icon={<ShieldCheck size={13} />}>
         <ToggleRow
           setting="confirmVerify"
-          label="Ask before verifying a run"
-          hint="Rejection and deletion always ask, whatever this is set to — they are visible to the runner or cannot be undone."
+          label={t('settings.moderation.confirmVerify')}
+          hint={t('settings.moderation.confirmVerifyHint')}
         />
       </Card>
 
-      <Card title="Queue" icon={<Layers size={13} />}>
+      <Card title={t('settings.moderation.queue')} icon={<Layers size={13} />}>
         <ToggleRow
           setting="onlyMyGames"
-          label="Only show games I moderate"
-          hint="Off widens the queue to every pending run Speedrun.com will return, including games where you cannot act."
+          label={t('settings.moderation.onlyMyGames')}
+          hint={t('settings.moderation.onlyMyGamesHint')}
         />
         <NumberRow
           setting="queueLimit"
-          label="Runs per refresh"
-          hint="How many runs one refresh fetches. Higher means fewer round trips but a longer wait before anything appears. The backend caps this at 2000."
+          label={t('settings.moderation.queueLimit')}
+          hint={t('settings.moderation.queueLimitHint')}
           min={25}
           max={2000}
-          unit="runs"
+          unit={t('settings.unit.runs')}
         />
         <ToggleRow
           setting="autoCheckVideos"
-          label="Check videos when the queue loads"
-          hint="Verifies each run’s video links in the background. Turn it off on a slow connection — a check that fails is reported as “could not check”, never as a missing video."
+          label={t('settings.moderation.autoCheckVideos')}
+          hint={t('settings.moderation.autoCheckVideosHint')}
         />
       </Card>
 
-      <Card title="Fast Review" icon={<Zap size={13} />}>
+      <Card title={t('queue.fastReview')} icon={<Zap size={13} />}>
         <NumberRow
           setting="fastReviewDelay"
-          label="Pause after each decision"
-          hint="Seconds the outcome stays on screen before the next run appears. Zero advances immediately; a second or two makes a mistyped key obvious while it still means something."
+          label={t('settings.moderation.fastReviewDelay')}
+          hint={t('settings.moderation.fastReviewDelayHint')}
           min={0}
           max={10}
-          unit="seconds"
+          unit={t('settings.unit.seconds')}
         />
       </Card>
 
-      <Card title="Request budget" icon={<Gauge size={13} />}>
+      <Card title={t('settings.moderation.budget')} icon={<Gauge size={13} />}>
         <NumberRow
           setting="rateLimit"
-          label="Requests per minute"
-          hint="A self-imposed ceiling on how fast SRCTools talks to Speedrun.com, kept below their published limit. Between 10 and 100; the backend clamps anything outside that and reports back what it applied."
+          label={t('settings.moderation.rateLimit')}
+          hint={t('settings.moderation.rateLimitHint')}
           min={10}
           max={100}
-          unit="req/min"
+          unit={t('settings.unit.reqPerMin')}
         />
         <RateLimitRow />
       </Card>
@@ -859,22 +887,20 @@ function ModerationSection() {
 
 /** Live view of the budget, so the number above has visible consequences. */
 function RateLimitRow() {
+  const t = useT();
   const rateLimit = useSession((state) => state.rateLimit);
   const refresh = useSession((state) => state.refreshRateLimit);
 
   return (
-    <Row
-      label="Currently used"
-      hint="Requests issued in the last sliding minute. When the budget is full, SRCTools waits rather than letting Speedrun.com refuse the request."
-    >
+    <Row label={t('settings.moderation.used')} hint={t('settings.moderation.usedHint')}>
       <span className="num" style={{ fontSize: 'var(--text-sm)' }}>
         {formatNumber(rateLimit.used)} / {formatNumber(rateLimit.capacity)}
       </span>
       <button
         type="button"
         className="btn btn--sm btn--ghost btn--icon"
-        title="Refresh"
-        aria-label="Refresh the request budget"
+        title={t('common.refresh')}
+        aria-label={t('settings.moderation.refreshBudget')}
         onClick={() => void refresh()}
       >
         <RefreshCw size={13} />
@@ -1114,7 +1140,8 @@ function NotificationsSection() {
  */
 function WatcherStateRow() {
   const t = useT();
-  const notifyNewRuns = useSession((state) => state.settings.notifyNewRuns);
+  const settings = useSession((state) => state.settings);
+  const webhookReady = useWebhook((state) => state.status.configured);
   const hasApiKey = useSession((state) => state.hasApiKey);
 
   const running = useWatcher((state) => state.running);
@@ -1124,7 +1151,9 @@ function WatcherStateRow() {
   const lastError = useWatcher((state) => state.lastError);
 
   let state: string;
-  if (!notifyNewRuns) state = t('settings.notify.watcherOff');
+  // Asked of the same predicate the watcher itself uses, so this line cannot
+  // claim the loop is off while it is polling for the webhook.
+  if (!watcherWanted(settings, webhookReady)) state = t('settings.notify.watcherOff');
   else if (!hasApiKey || !running) state = t('settings.notify.watcherIdle');
   else if (failures > 0) {
     state = t('settings.notify.watcherBackoff', {
@@ -1305,9 +1334,10 @@ function WebhookCard() {
       </Row>
 
       <Row label={t('settings.webhook.enable')} hint={t('settings.webhook.eventsHint')}>
-        <Checkbox
+        <Switch
           checked={enabled}
           disabled={!status.configured}
+          label={t('settings.webhook.enable')}
           onChange={(next) => void update('webhookEnabled', next)}
         />
       </Row>
@@ -1388,9 +1418,10 @@ function WebhookEventRow({ setting, label }: { setting: BooleanKey; label: strin
         <div className="setting-row__label">{label}</div>
       </div>
       <div className="setting-row__control">
-        <Checkbox
+        <Switch
           checked={value}
           disabled={!enabled}
+          label={label}
           onChange={(next) => void update(setting, next)}
         />
       </div>
@@ -1401,19 +1432,22 @@ function WebhookEventRow({ setting, label }: { setting: BooleanKey; label: strin
 /**
  * Which games the webhook posts about.
  *
- * No selection means every game, which is what an untouched install does. The
- * count is stated in words rather than left as a row of ticks, because "posts
- * about 2 of your 36 games" is the part that is easy to forget and expensive to
- * get wrong — a filter that silently matches nothing looks exactly like a
- * broken webhook.
+ * Every switch means the same thing in both directions: green posts, gray does
+ * not. That is why "all games" is its own switch rather than an empty
+ * selection — with an empty list standing for *everything*, a column of gray
+ * switches would say the opposite of what it did.
+ *
+ * The list is always visible when the filter is on. A filter that matches
+ * nothing looks exactly like a broken webhook, so the state that causes it is
+ * shown rather than folded away behind a button.
  */
 function WebhookGamesRow() {
   const t = useT();
+  const all = useSession((state) => state.settings.webhookAllGames);
   const selected = useSession((state) => state.settings.webhookGames);
   const enabled = useSession((state) => state.settings.webhookEnabled);
   const games = useSession((state) => state.games);
   const update = useSession((state) => state.updateSetting);
-  const [open, setOpen] = useState(false);
 
   const toggle = (id: string) => {
     const next = selected.includes(id)
@@ -1422,51 +1456,63 @@ function WebhookGamesRow() {
     void update('webhookGames', next);
   };
 
-  const hint =
-    selected.length === 0
-      ? t('settings.webhook.games.all')
-      : t('settings.webhook.games.some', { count: selected.length, total: games.length });
+  const chosen = games.filter((game) => selected.includes(game.id));
 
   return (
     <>
-      <Row label={t('settings.webhook.games')} hint={hint}>
-        <button
-          type="button"
-          className="btn btn--sm btn--ghost"
+      <div className="setting-row__label" style={{ marginTop: 12, marginBottom: 4 }}>
+        {t('settings.webhook.games')}
+      </div>
+
+      <Row label={t('settings.webhook.games.allLabel')} hint={t('settings.webhook.games.all')}>
+        <Switch
+          checked={all}
           disabled={!enabled}
-          onClick={() => setOpen((v) => !v)}
-        >
-          <Filter size={13} />
-          {open ? t('settings.webhook.games.hide') : t('settings.webhook.games.choose')}
-        </button>
+          label={t('settings.webhook.games.allLabel')}
+          onChange={(next) => void update('webhookAllGames', next)}
+        />
       </Row>
 
-      {open && enabled && (
-        <div style={{ maxHeight: 220, overflowY: 'auto', paddingLeft: 4, marginBottom: 8 }}>
-          {games.length === 0 && (
+      {!all && (
+        <div style={{ maxHeight: 260, overflowY: 'auto' }}>
+          {games.length === 0 ? (
             <div className="setting-row__hint">{t('settings.webhook.games.none')}</div>
+          ) : (
+            games.map((game) => (
+              <div className="setting-row" key={game.id}>
+                <div className="setting-row__text">
+                  <div className="setting-row__label">{game.name}</div>
+                </div>
+                <div className="setting-row__control">
+                  <Switch
+                    checked={selected.includes(game.id)}
+                    disabled={!enabled}
+                    label={game.name}
+                    onChange={() => toggle(game.id)}
+                  />
+                </div>
+              </div>
+            ))
           )}
-          {games.map((game) => (
-            <div className="setting-row" key={game.id}>
-              <div className="setting-row__text">
-                <div className="setting-row__label">{game.name}</div>
-              </div>
-              <div className="setting-row__control">
-                <Checkbox
-                  checked={selected.includes(game.id)}
-                  onChange={() => toggle(game.id)}
-                />
-              </div>
-            </div>
-          ))}
-          {selected.length > 0 && (
-            <button
-              type="button"
-              className="btn btn--sm btn--ghost"
-              onClick={() => void update('webhookGames', [])}
-            >
-              {t('settings.webhook.games.clear')}
-            </button>
+        </div>
+      )}
+
+      {/* Nothing switched on is a webhook that posts nothing. Said plainly,
+          because the symptom is silence and silence has many other causes. */}
+      {!all && (
+        <div
+          className={chosen.length === 0 ? 'notice notice--warn' : 'setting-row__hint'}
+          style={{ marginTop: 8 }}
+        >
+          {chosen.length === 0 ? (
+            <>
+              <ShieldAlert size={15} />
+              <span>{t('settings.webhook.games.empty')}</span>
+            </>
+          ) : (
+            t('settings.webhook.games.only', {
+              games: chosen.map((game) => game.name).join(', '),
+            })
           )}
         </div>
       )}
@@ -1662,6 +1708,7 @@ function DiscordPreviewRow() {
 /* -------------------------------------------------------------- templates */
 
 function TemplatesSection() {
+  const t = useT();
   const templates = useSession((state) => state.templates);
   const refresh = useSession((state) => state.refreshTemplates);
 
@@ -1674,19 +1721,18 @@ function TemplatesSection() {
 
   const remove = async (template: RejectionTemplate) => {
     const ok = await ui.confirm({
-      title: `Delete “${template.label}”?`,
-      message:
-        'The template is removed from the rejection dialog. Rejections you have already sent are unaffected.',
+      title: t('settings.templates.deleteTitle', { name: template.label }),
+      message: t('settings.templates.deleteMessage'),
       danger: true,
-      confirmLabel: 'Delete template',
+      confirmLabel: t('settings.templates.deleteConfirm'),
     });
     if (!ok) return;
     try {
       await prefs.deleteTemplate(template.id);
       await refresh();
-      ui.success('Template deleted');
+      ui.success(t('settings.templates.deleted'));
     } catch (err) {
-      ui.error('Could not delete the template', err);
+      ui.error(t('settings.templates.deleteFailed'), err);
     }
   };
 
@@ -1705,7 +1751,7 @@ function TemplatesSection() {
       await prefs.reorderTemplates(order);
       await refresh();
     } catch (err) {
-      ui.error('Could not reorder the templates', err);
+      ui.error(t('settings.templates.reorderFailed'), err);
     } finally {
       setBusy(false);
     }
@@ -1716,9 +1762,9 @@ function TemplatesSection() {
     try {
       await prefs.restoreTemplates();
       await refresh();
-      ui.success('Built-in templates restored', 'Your own templates were left alone.');
+      ui.success(t('settings.templates.restored'), t('settings.templates.restoredHint'));
     } catch (err) {
-      ui.error('Could not restore them', err);
+      ui.error(t('settings.templates.restoreFailed'), err);
     } finally {
       setBusy(false);
     }
@@ -1727,47 +1773,47 @@ function TemplatesSection() {
   return (
     <>
       <Card
-        title="Rejection templates"
+        title={t('settings.templates.title')}
         icon={<Pencil size={13} />}
         actions={
           <div className="row" style={{ gap: 6 }}>
             <button type="button" className="btn btn--sm" onClick={() => void restore()} disabled={busy}>
               <Undo2 size={13} />
-              Restore built-ins
+              {t('settings.templates.restore')}
             </button>
             <button type="button" className="btn btn--sm btn--primary" onClick={() => setEditing('new')}>
               <Plus size={13} />
-              New template
+              {t('settings.templates.new')}
             </button>
           </div>
         }
       >
         <p className="setting-row__hint" style={{ marginBottom: 12 }}>
-          Picking a template in the rejection dialog fills the reason box — it never sends anything
-          on its own, so every rejection is still text you have read. The runner sees exactly what
-          is in that box.
+          {t('settings.templates.intro')}
         </p>
 
         {templates.length === 0 ? (
           <EmptyState
             icon={<Pencil size={24} />}
-            title="No templates"
-            hint="Add one for a reason you write often, or restore the built-in set."
+            title={t('settings.templates.empty')}
+            hint={t('settings.templates.emptyHint')}
             action={
               <button type="button" className="btn btn--primary" onClick={() => setEditing('new')}>
                 <Plus size={13} />
-                New template
+                {t('settings.templates.new')}
               </button>
             }
           />
         ) : (
           <div className="col" style={{ gap: 8 }}>
-            {templates.map((template, index) => (
-              <div
-                key={template.id}
-                className="card"
-                style={{ padding: 12, display: 'flex', gap: 10, alignItems: 'flex-start' }}
-              >
+            {templates.map((stored, index) => {
+              const template = displayTemplate(stored, t);
+              return (
+                <div
+                  key={template.id}
+                  className="card"
+                  style={{ padding: 12, display: 'flex', gap: 10, alignItems: 'flex-start' }}
+                >
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div className="row" style={{ gap: 6 }}>
                     <span style={{ fontSize: 'var(--text-sm)', fontWeight: 500 }}>
@@ -1775,7 +1821,7 @@ function TemplatesSection() {
                     </span>
                     {template.builtin && (
                       <Badge tone="neutral" small outline>
-                        Built-in
+                        {t('settings.templates.builtin')}
                       </Badge>
                     )}
                   </div>
@@ -1788,8 +1834,8 @@ function TemplatesSection() {
                   <button
                     type="button"
                     className="btn btn--sm btn--ghost btn--icon"
-                    title="Move up"
-                    aria-label="Move up"
+                    title={t('settings.templates.moveUp')}
+                    aria-label={t('settings.templates.moveUp')}
                     disabled={index === 0 || busy}
                     onClick={() => void move(index, -1)}
                   >
@@ -1798,8 +1844,8 @@ function TemplatesSection() {
                   <button
                     type="button"
                     className="btn btn--sm btn--ghost btn--icon"
-                    title="Move down"
-                    aria-label="Move down"
+                    title={t('settings.templates.moveDown')}
+                    aria-label={t('settings.templates.moveDown')}
                     disabled={index === templates.length - 1 || busy}
                     onClick={() => void move(index, 1)}
                   >
@@ -1808,8 +1854,8 @@ function TemplatesSection() {
                   <button
                     type="button"
                     className="btn btn--sm btn--ghost btn--icon"
-                    title="Edit"
-                    aria-label="Edit template"
+                    title={t('common.edit')}
+                    aria-label={t('settings.templates.edit')}
                     onClick={() => setEditing(template)}
                   >
                     <Pencil size={13} />
@@ -1817,24 +1863,25 @@ function TemplatesSection() {
                   <button
                     type="button"
                     className="btn btn--sm btn--ghost btn--icon"
-                    title="Copy the text"
-                    aria-label="Copy the template text"
-                    onClick={() => void copyToClipboard(template.body, 'Template copied')}
+                    title={t('settings.templates.copy')}
+                    aria-label={t('settings.templates.copy')}
+                    onClick={() => void copyToClipboard(template.body, t('settings.templates.copied'))}
                   >
                     <Copy size={13} />
                   </button>
                   <button
                     type="button"
                     className="btn btn--sm btn--ghost btn--icon"
-                    title="Delete"
-                    aria-label="Delete template"
+                    title={t('common.delete')}
+                    aria-label={t('settings.templates.delete')}
                     onClick={() => void remove(template)}
                   >
                     <Trash2 size={13} />
                   </button>
                 </div>
-              </div>
-            ))}
+                </div>
+              );
+            })}
           </div>
         )}
       </Card>
@@ -1862,6 +1909,7 @@ function TemplateDialog({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const t = useT();
   const [label, setLabel] = useState(template?.label ?? '');
   const [body, setBody] = useState(template?.body ?? '');
   const [busy, setBusy] = useState(false);
@@ -1869,14 +1917,16 @@ function TemplateDialog({
 
   const save = async () => {
     if (label.trim() === '' || body.trim() === '') {
-      setError('A template needs both a name and a body.');
+      setError(t('settings.templates.needBoth'));
       return;
     }
     setBusy(true);
     setError(null);
     try {
       await prefs.saveTemplate(label.trim(), body.trim(), template?.id ?? null);
-      ui.success(template === null ? 'Template added' : 'Template saved');
+      ui.success(
+        template === null ? t('settings.templates.added') : t('settings.templates.saved'),
+      );
       onSaved();
     } catch (err) {
       setError(errorText(err));
@@ -1886,29 +1936,29 @@ function TemplateDialog({
 
   return (
     <Modal
-      title={template === null ? 'New rejection template' : 'Edit template'}
+      title={template === null ? t('settings.templates.newTitle') : t('settings.templates.editTitle')}
       onClose={onClose}
       width={520}
       footer={
         <>
           <button type="button" className="btn" onClick={onClose} disabled={busy}>
-            Cancel
+            {t('common.cancel')}
           </button>
           <button type="button" className="btn btn--primary" onClick={() => void save()} disabled={busy}>
             {busy ? <Spinner /> : null}
-            Save template
+            {t('settings.templates.saveButton')}
           </button>
         </>
       }
     >
       <label className="label" htmlFor="template-label">
-        Name
+        {t('settings.templates.name')}
       </label>
       <input
         id="template-label"
         className="input"
         value={label}
-        placeholder="Video unavailable"
+        placeholder={t('settings.templates.namePlaceholder')}
         onChange={(event) => {
           setLabel(event.currentTarget.value);
           setError(null);
@@ -1917,14 +1967,14 @@ function TemplateDialog({
       />
 
       <label className="label" htmlFor="template-body">
-        Message to the runner
+        {t('settings.templates.body')}
       </label>
       <textarea
         id="template-body"
         className="textarea"
         rows={5}
         value={body}
-        placeholder="The video link on this run cannot be viewed. Please resubmit with a working link."
+        placeholder={t('settings.templates.bodyPlaceholder')}
         onChange={(event) => {
           setBody(event.currentTarget.value);
           setError(null);
@@ -1932,8 +1982,7 @@ function TemplateDialog({
         style={{ width: '100%' }}
       />
       <p className="dim" style={{ fontSize: 'var(--text-xs)', marginTop: 8, lineHeight: 1.55 }}>
-        This text is sent to Speedrun.com as the rejection reason and is visible to the runner, so
-        write it as a message to them. You can still edit it before sending.
+        {t('settings.templates.bodyHint')}
       </p>
 
       {error !== null && (
@@ -1949,6 +1998,7 @@ function TemplateDialog({
 /* --------------------------------------------------------------- keyboard */
 
 function KeyboardSection() {
+  const t = useT();
   const shortcuts = useSession((state) => state.shortcuts);
   const setShortcut = useSession((state) => state.setShortcut);
   const resetShortcuts = useSession((state) => state.resetShortcuts);
@@ -1957,47 +2007,37 @@ function KeyboardSection() {
 
   const reset = async () => {
     const ok = await ui.confirm({
-      title: 'Reset every shortcut?',
-      message: 'All bindings go back to their defaults. Nothing else changes.',
-      confirmLabel: 'Reset shortcuts',
+      title: t('settings.keyboard.resetTitle'),
+      message: t('settings.keyboard.resetMessage'),
+      confirmLabel: t('settings.keyboard.resetConfirm'),
     });
     if (!ok) return;
     try {
       await resetShortcuts();
-      ui.success('Shortcuts reset');
+      ui.success(t('settings.keyboard.reset'));
     } catch (err) {
-      ui.error('Could not reset the shortcuts', err);
+      ui.error(t('settings.keyboard.resetFailed'), err);
     }
   };
-
-  const groups: ShortcutDefinition['group'][] = [
-    'Moderation',
-    'Navigation',
-    'Selection',
-    'Application',
-  ];
 
   return (
     <>
       <div className="notice notice--info" style={{ marginBottom: 16 }}>
         <Info size={15} />
-        <span>
-          Press <KeyHint binding="?" /> anywhere to see this list as a quick reference. Sequences
-          such as <KeyHint binding="g d" /> are two presses in a row, not a chord.
-        </span>
+        <span>{t('settings.keyboard.intro')}</span>
       </div>
 
       <div className="col" style={{ gap: 16 }}>
-        {groups.map((group) => (
+        {SHORTCUT_GROUPS.map((group) => (
           <Card
             key={group}
-            title={group}
+            title={t(`settings.keyboard.group.${group}`)}
             icon={<Keyboard size={13} />}
             actions={
-              group === 'Application' ? (
+              group === 'application' ? (
                 <button type="button" className="btn btn--sm" onClick={() => void reset()}>
                   <RotateCcw size={13} />
-                  Reset all
+                  {t('settings.keyboard.resetAll')}
                 </button>
               ) : undefined
             }
@@ -2009,15 +2049,17 @@ function KeyboardSection() {
                 return (
                   <Row
                     key={definition.action}
-                    label={definition.label}
-                    hint={definition.description}
+                    label={t(definition.labelKey)}
+                    hint={t(definition.descriptionKey)}
                   >
                     {custom && (
                       <button
                         type="button"
                         className="btn btn--sm btn--ghost btn--icon"
-                        title={`Restore the default (${definition.binding})`}
-                        aria-label="Restore the default binding"
+                        title={t('settings.keyboard.restoreDefault', {
+                          binding: definition.binding,
+                        })}
+                        aria-label={t('settings.keyboard.restoreDefaultAria')}
                         onClick={() => void setShortcut(definition.action, '')}
                       >
                         <Undo2 size={13} />
@@ -2027,7 +2069,7 @@ function KeyboardSection() {
                     {definition.fixed === true ? (
                       <span
                         className="dim"
-                        title="This binding is a convention the app depends on and cannot be changed."
+                        title={t('settings.keyboard.fixedHint')}
                         style={{ display: 'inline-flex', alignItems: 'center', padding: '0 4px' }}
                       >
                         <Lock size={13} />
@@ -2038,7 +2080,7 @@ function KeyboardSection() {
                         className="btn btn--sm"
                         onClick={() => setCapturing(definition)}
                       >
-                        Change
+                        {t('settings.keyboard.change')}
                       </button>
                     )}
                   </Row>
@@ -2057,7 +2099,7 @@ function KeyboardSection() {
           onCapture={(binding) => {
             setCapturing(null);
             void setShortcut(capturing.action, binding).catch((err: unknown) => {
-              ui.error('Could not save the binding', err);
+              ui.error(t('settings.keyboard.saveFailed'), err);
             });
           }}
         />
@@ -2084,6 +2126,7 @@ function CaptureDialog({
   onClose: () => void;
   onCapture: (binding: string) => void;
 }) {
+  const t = useT();
   const shortcuts = useSession((state) => state.shortcuts);
   const [captured, setCaptured] = useState<string | null>(null);
 
@@ -2113,13 +2156,13 @@ function CaptureDialog({
 
   return (
     <Modal
-      title={`Rebind “${definition.label}”`}
+      title={t('settings.keyboard.rebindTitle', { action: t(definition.labelKey) })}
       onClose={onClose}
       width={440}
       footer={
         <>
           <button type="button" className="btn" onClick={onClose}>
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             type="button"
@@ -2129,14 +2172,13 @@ function CaptureDialog({
               if (captured !== null) onCapture(captured);
             }}
           >
-            Use this key
+            {t('settings.keyboard.useKey')}
           </button>
         </>
       }
     >
       <p style={{ fontSize: 'var(--text-sm)', lineHeight: 1.6 }}>
-        Press the key or combination you want. Escape closes this window without changing
-        anything.
+        {t('settings.keyboard.captureHint')}
       </p>
 
       <div
@@ -2145,7 +2187,7 @@ function CaptureDialog({
       >
         {captured === null ? (
           <span className="dim" style={{ fontSize: 'var(--text-sm)' }}>
-            Waiting for a keystroke… currently <KeyHint binding={current} />
+            {t('settings.keyboard.waiting')} <KeyHint binding={current} />
           </span>
         ) : (
           <KeyHint binding={captured} />
@@ -2156,15 +2198,13 @@ function CaptureDialog({
         <div className="notice notice--warn">
           <TriangleAlert size={15} />
           <span>
-            “{conflict.label}” already uses this key. Both will fire on it until you rebind that
-            one too.
+            {t('settings.keyboard.conflictBody', { other: t(conflict.labelKey) })}
           </span>
         </div>
       )}
 
       <p className="dim" style={{ fontSize: 'var(--text-xs)', lineHeight: 1.55, marginTop: 10 }}>
-        Two-key sequences such as <KeyHint binding="g d" /> cannot be recorded here; they are set
-        by the defaults.
+        {t('settings.keyboard.sequenceHint')}
       </p>
     </Modal>
   );
@@ -2173,6 +2213,7 @@ function CaptureDialog({
 /* ------------------------------------------------------------------- data */
 
 function DataSection() {
+  const t = useT();
   const [stats, setStats] = useState<CacheStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -2207,11 +2248,13 @@ function DataSection() {
     try {
       const removed = await prefs.cachePrune();
       ui.success(
-        removed === 0 ? 'Nothing had expired' : `Removed ${plural(removed, 'expiredEntry')}`,
+        removed === 0
+          ? t('settings.data.nothingExpired')
+          : t('settings.data.pruned', { entries: plural(removed, 'expiredEntry') }),
       );
       setReload((n) => n + 1);
     } catch (err) {
-      ui.error('Could not prune the cache', err);
+      ui.error(t('settings.data.pruneFailed'), err);
     } finally {
       setBusy(false);
     }
@@ -2219,32 +2262,43 @@ function DataSection() {
 
   const clear = async () => {
     const ok = await ui.confirm({
-      title: 'Empty the cache?',
-      message:
-        'Everything in the cache came from Speedrun.com and can be fetched again, so nothing is lost — but the next few screens will be slower and will spend API requests. Your history, statistics and settings are not touched.',
-      confirmLabel: 'Empty cache',
+      title: t('settings.data.clearTitle'),
+      message: t('settings.data.clearMessage'),
+      confirmLabel: t('settings.data.clearConfirm'),
     });
     if (!ok) return;
     setBusy(true);
     try {
       const removed = await prefs.cacheClear();
-      ui.success(`Cache emptied`, `${plural(removed, 'entry')} removed.`);
+      ui.success(
+        t('settings.data.cleared'),
+        t('settings.data.clearedHint', { entries: plural(removed, 'entry') }),
+      );
       setReload((n) => n + 1);
     } catch (err) {
-      ui.error('Could not empty the cache', err);
+      ui.error(t('settings.data.clearFailed'), err);
     } finally {
       setBusy(false);
     }
   };
 
-  const invalidate = async (kind: string, label: string) => {
+  /**
+   * Drops one kind of cached row.
+   *
+   * The label arrives as a catalogue key rather than finished text so the toast
+   * can name what was dropped in the reader's language.
+   */
+  const invalidate = async (kind: string, labelKey: TranslationKey) => {
     setBusy(true);
     try {
       const removed = await prefs.cacheInvalidate(kind);
-      ui.success(`${label} refreshed`, `${plural(removed, 'entry')} dropped.`);
+      ui.success(
+        t('settings.data.refreshed', { what: t(labelKey) }),
+        t('settings.data.refreshedHint', { entries: plural(removed, 'entry') }),
+      );
       setReload((n) => n + 1);
     } catch (err) {
-      ui.error(`Could not drop the ${label.toLowerCase()} cache`, err);
+      ui.error(t('settings.data.refreshFailed', { what: t(labelKey) }), err);
     } finally {
       setBusy(false);
     }
@@ -2253,7 +2307,7 @@ function DataSection() {
   return (
     <div className="col" style={{ gap: 16 }}>
       <Card
-        title="Local database"
+        title={t('settings.data.dbTitle')}
         icon={<Database size={13} />}
         actions={
           <button
@@ -2263,7 +2317,7 @@ function DataSection() {
             disabled={loading}
           >
             {loading ? <Spinner /> : <RefreshCw size={13} />}
-            Refresh
+            {t('common.refresh')}
           </button>
         }
       >
@@ -2277,36 +2331,35 @@ function DataSection() {
           </div>
         ) : stats === null ? null : (
           <>
-            <Row
-              label="Where it lives"
-              hint="One SQLite file. It holds the cache, your local history and your settings — never a credential; those are in the Windows vault."
-            >
+            <Row label={t('settings.data.where')} hint={t('settings.data.whereHint')}>
               <span className="mono truncate" style={{ fontSize: 'var(--text-xs)', maxWidth: 260 }}>
                 {stats.databasePath}
               </span>
               <button
                 type="button"
                 className="btn btn--sm btn--ghost btn--icon"
-                title="Copy the path"
-                aria-label="Copy the database path"
-                onClick={() => void copyToClipboard(stats.databasePath, 'Path copied')}
+                title={t('settings.data.copyPath')}
+                aria-label={t('settings.data.copyPath')}
+                onClick={() =>
+                  void copyToClipboard(stats.databasePath, t('settings.data.pathCopied'))
+                }
               >
                 <Copy size={13} />
               </button>
             </Row>
 
-            <Row label="File size" hint="Includes free space SQLite has reserved for reuse.">
+            <Row label={t('settings.data.size')} hint={t('settings.data.sizeHint')}>
               <span className="num" style={{ fontSize: 'var(--text-sm)' }}>
                 {formatBytes(stats.databaseBytes)}
               </span>
             </Row>
 
             <Row
-              label="Cached API responses"
+              label={t('settings.data.cacheEntries')}
               hint={
                 stats.oldestEntryAt === null
-                  ? 'Nothing cached yet.'
-                  : `Oldest fetched ${formatDateTime(stats.oldestEntryAt)}.`
+                  ? t('settings.data.nothingCached')
+                  : t('settings.data.oldest', { when: formatDateTime(stats.oldestEntryAt) })
               }
             >
               <span className="num" style={{ fontSize: 'var(--text-sm)' }}>
@@ -2314,21 +2367,18 @@ function DataSection() {
               </span>
               {stats.expiredEntries > 0 && (
                 <Badge tone="unknown" small>
-                  {formatNumber(stats.expiredEntries)} expired
+                  {t('settings.data.expired', { count: formatNumber(stats.expiredEntries) })}
                 </Badge>
               )}
             </Row>
 
-            <Row
-              label="Video verdicts"
-              hint="Each remembered check, so re-opening a run does not ask the provider again."
-            >
+            <Row label={t('settings.data.videoChecks')} hint={t('settings.data.videoChecksHint')}>
               <span className="num" style={{ fontSize: 'var(--text-sm)' }}>
                 {formatNumber(stats.videoChecks)}
               </span>
             </Row>
 
-            <Row label="Moderation log" hint="Actions SRCTools recorded on this machine.">
+            <Row label={t('settings.data.log')} hint={t('settings.data.logHint')}>
               <span className="num" style={{ fontSize: 'var(--text-sm)' }}>
                 {formatNumber(stats.historyEntries)}
               </span>
@@ -2340,56 +2390,50 @@ function DataSection() {
         )}
       </Card>
 
-      <Card title="Cache maintenance" icon={<HardDrive size={13} />}>
+      <Card title={t('settings.data.maintenance')} icon={<HardDrive size={13} />}>
         <div className="notice notice--info" style={{ marginBottom: 6 }}>
           <Info size={15} />
-          <span>
-            Everything below is safe: the cache is a copy of data Speedrun.com will hand over
-            again. Clearing it costs API requests and time, never records.
-          </span>
+          <span>{t('settings.data.maintenanceHint')}</span>
         </div>
 
-        <Row
-          label="Remove expired entries"
-          hint="Drops rows past their expiry and reclaims the disk space."
-        >
+        <Row label={t('settings.data.prune')} hint={t('settings.data.pruneHint')}>
           <button type="button" className="btn btn--sm" onClick={() => void prune()} disabled={busy}>
             {busy ? <Spinner /> : <Timer size={13} />}
-            Prune
+            {t('settings.data.pruneButton')}
           </button>
         </Row>
 
         <Row
-          label="Refresh game data"
-          hint="Drops cached games, categories, levels and variables. Use this when a game’s rules have changed on the site but SRCTools still shows the old text."
+          label={t('settings.data.refreshGameData')}
+          hint={t('settings.data.refreshGameDataHint')}
         >
           <button
             type="button"
             className="btn btn--sm"
-            onClick={() => void invalidate('categories', 'Categories')}
+            onClick={() => void invalidate('categories', 'queue.col.category')}
             disabled={busy}
           >
-            Categories
+            {t('settings.data.categories')}
           </button>
           <button
             type="button"
             className="btn btn--sm"
-            onClick={() => void invalidate('game', 'Games')}
+            onClick={() => void invalidate('game', 'settings.webhook.games')}
             disabled={busy}
           >
-            Games
+            {t('settings.webhook.games')}
           </button>
           <button
             type="button"
             className="btn btn--sm"
-            onClick={() => void invalidate('moderated_games', 'Moderated games')}
+            onClick={() => void invalidate('moderated_games', 'settings.data.moderatedGames')}
             disabled={busy}
           >
-            My games
+            {t('settings.data.myGames')}
           </button>
         </Row>
 
-        <Row label="Empty the whole cache" hint="Leaves history, statistics and settings intact.">
+        <Row label={t('settings.data.clearCache')} hint={t('settings.data.clearCacheHint')}>
           <button
             type="button"
             className="btn btn--sm btn--danger"
@@ -2397,20 +2441,14 @@ function DataSection() {
             disabled={busy}
           >
             <Trash2 size={13} />
-            Empty cache
+            {t('settings.data.clearConfirm')}
           </button>
         </Row>
       </Card>
 
-      <Card title="What is stored where" icon={<Bell size={13} />}>
+      <Card title={t('settings.data.storedWhere')} icon={<Bell size={13} />}>
         <p className="setting-row__hint" style={{ lineHeight: 1.7 }}>
-          Your Speedrun.com API key and any Twitch credentials live in the Windows Credential
-          Manager, encrypted by Windows against your user account. They are never written to the
-          database, never included in an export and never printed to a log. Everything else —
-          cached API responses, your local moderation history and these settings — is in the SQLite
-          file above and never leaves this machine. To clear the local history, use the{' '}
-          <strong>Clear</strong> button on the History page; it is kept separate from the cache
-          because it is the one thing here that cannot be fetched again.
+          {t('settings.data.storedWhereBody')}
         </p>
       </Card>
     </div>
@@ -2432,10 +2470,8 @@ function DataSection() {
  */
 function AboutSection() {
   const t = useT();
-  const startup = useSession((state) => state.startup);
   const result = useUpdate((state) => state.result);
   const checking = useUpdate((state) => state.checking);
-  const error = useUpdate((state) => state.error);
   const checkNow = useUpdate((state) => state.checkNow);
   const reopen = useUpdate((state) => state.reopen);
 
@@ -2454,27 +2490,30 @@ function AboutSection() {
   return (
     <div className="col" style={{ gap: 16 }}>
       <Card title={t('settings.about')} icon={<Info size={13} />}>
-        <Row label={t('update.current')} hint={t('settings.about.versionHint')}>
+        <Row label={t('update.current')}>
           <span className="mono" style={{ fontSize: 'var(--text-sm)' }}>
-            {startup?.version ?? '—'}
+            1.1.0
           </span>
+        </Row>
+
+        <Row label={t('settings.about.developer')}>
+          <span>Short</span>
+        </Row>
+
+        <Row label={t('settings.about.source')} hint={t('settings.about.sourceHint')}>
+          <button
+            type="button"
+            className="btn btn--sm"
+            onClick={() => void openExternal(PROJECT_URL)}
+          >
+            <ExternalLink size={13} />
+            {t('settings.about.openGithub')}
+          </button>
         </Row>
 
         <Row
           label={t('update.check')}
-          hint={
-            error !== null
-              ? error
-              : result === null
-                ? t('update.check.hint')
-                : !result.configured
-                  ? t('update.notConfigured.hint')
-                  : result.available
-                    ? t('update.available.lead')
-                    : result.latest === null
-                      ? t('update.noReleases')
-                      : t('update.upToDate.hint', { version: result.current })
-          }
+          hint={t('update.check.hint')}
         >
           {result?.available === true && (
             <button type="button" className="btn btn--sm btn--primary" onClick={reopen}>

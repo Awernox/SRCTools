@@ -52,6 +52,11 @@ pub struct StartupReport {
     pub database_path: String,
     /// True when a Speedrun.com key was found in the OS vault.
     pub has_api_key: bool,
+    /// Project home page, from `CARGO_PKG_REPOSITORY`. `None` when the manifest
+    /// carries no usable repository — the same single source the update check
+    /// reads, so the About link and the update check can never point at two
+    /// different projects.
+    pub repository_url: Option<String>,
     /// Non-fatal problems, e.g. the credential vault being unavailable.
     pub warnings: Vec<String>,
 }
@@ -170,6 +175,7 @@ pub fn run() {
                 version: env!("CARGO_PKG_VERSION").to_string(),
                 database_path: db_path.display().to_string(),
                 has_api_key,
+                repository_url: crate::update::repository_url(),
                 warnings,
             };
 

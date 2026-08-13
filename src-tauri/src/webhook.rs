@@ -41,9 +41,6 @@ const ALLOWED_HOSTS: [&str; 5] = [
 /// Sent by the Test webhook button, verbatim.
 const TEST_MESSAGE: &str = "✅ SRCTools webhook connected";
 
-/// Shown under every embed.
-const FOOTER: &str = "Sent by SRCTools";
-
 /// Discord's own limits. Exceeding any of them fails the whole request with a
 /// 400, so payloads are trimmed to fit rather than sent hopefully.
 const TITLE_LIMIT: usize = 256;
@@ -190,8 +187,8 @@ pub enum EventKind {
 impl EventKind {
     fn title(self) -> &'static str {
         match self {
-            Self::NewRun => "🚨 New Speedrun Submission",
-            Self::Approved => "✅ Run approved",
+            Self::NewRun => "🏆 **New Run**",
+            Self::Approved => "✅ **Run verified**",
             Self::Rejected => "❌ Run rejected",
             Self::DeletedVideo => "🗑️ Video no longer available",
             Self::VideoProblem => "⚠️ Video problem",
@@ -234,7 +231,10 @@ pub struct RunEvent {
     pub game: Option<String>,
     pub runner: Option<String>,
     pub category: Option<String>,
+    /// The level/map name, when the run is on a level rather than the full game.
+    pub level_name: Option<String>,
     pub time: Option<String>,
+    pub duration_seconds: Option<f64>,
     pub status: Option<String>,
     pub video_url: Option<String>,
     /// Link to the run on Speedrun.com; makes the embed title clickable.
@@ -276,8 +276,6 @@ struct Embed {
     color: u32,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     fields: Vec<Field>,
-    footer: Footer,
-    timestamp: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -285,11 +283,6 @@ struct Field {
     name: String,
     value: String,
     inline: bool,
-}
-
-#[derive(Debug, Serialize)]
-struct Footer {
-    text: String,
 }
 
 /// Trims a value to Discord's limit and drops control characters.
@@ -313,6 +306,37 @@ fn link(value: Option<&String>) -> Option<String> {
     matches!(url.scheme(), "http" | "https").then(|| url.to_string())
 }
 
+/// The run's time, preferring the precise duration when it is known.
+fn run_time(event: &RunEvent) -> Option<String> {
+    event
+        .duration_seconds
+        .filter(|seconds| seconds.is_finite() && *seconds >= 0.0)
+        .map(|seconds| {
+            let total_ms = (seconds * 1000.0).round() as u64;
+            format!(
+                "{}m {}s {:03}ms",
+                total_ms / 60_000,
+                (total_ms / 1_000) % 60,
+                total_ms % 1_000,
+            )
+        })
+        .or_else(|| field_text(event.time.as_ref(), FIELD_VALUE_LIMIT))
+}
+
+/// The one-line summary for New Run, Run verified and Run rejected:
+/// `Map in Time by Runner`, with no field labels. The map is the level name
+/// when the run is on one; games without levels fall back to the category,
+/// which for level-based games names the map.
+fn run_summary(event: &RunEvent) -> String {
+    let map = field_text(event.level_name.as_ref(), FIELD_VALUE_LIMIT)
+        .or_else(|| field_text(event.category.as_ref(), FIELD_VALUE_LIMIT))
+        .unwrap_or_else(|| "Unknown map".to_string());
+    let time = run_time(event).unwrap_or_else(|| "Unknown time".to_string());
+    let runner = field_text(event.runner.as_ref(), FIELD_VALUE_LIMIT)
+        .unwrap_or_else(|| "Unknown runner".to_string());
+    format!("{map} in {time} by {runner}")
+}
+
 fn push_field(fields: &mut Vec<Field>, name: &str, value: Option<String>, inline: bool) {
     if let Some(value) = value {
         fields.push(Field {
@@ -325,11 +349,37 @@ fn push_field(fields: &mut Vec<Field>, name: &str, value: Option<String>, inline
 
 /// Builds the embed for one run.
 ///
-/// The shape is fixed: Game, Runner, Category, Time, Status, Video, footer
-/// "Sent by SRCTools".
-fn embed(event: &RunEvent, now: &str) -> Embed {
+/// New Run, Run verified and Run rejected share one compact shape: a single
+/// description line `Map in Time by Runner`, with no field labels. The map is
+/// the level name when the run is on one. Everything else follows the general
+/// shape: Game, Runner, Category, Time, Status, Video, with the detail as the
+/// description.
+///
+/// No footer and no timestamp. Discord renders the two together as a single
+/// "Sent by SRCTools · Today at 14:02" line under the embed, and the channel
+/// already stamps every message it shows with its own time.
+fn embed(event: &RunEvent) -> Embed {
     let kind = event.kind.unwrap_or(EventKind::NewRun);
-    let mut fields = Vec::with_capacity(6);
+
+    // New Run, Run verified and Run rejected share one compact shape: a single
+    // description line `Map in Time by Runner`, with no field labels. A
+    // rejection also carries its reason as a labelled field.
+    if matches!(kind, EventKind::NewRun | EventKind::Approved | EventKind::Rejected) {
+        let mut fields = Vec::new();
+        if kind == EventKind::Rejected {
+            push_field(&mut fields, "Reason", field_text(event.detail.as_ref(), FIELD_VALUE_LIMIT), false);
+        }
+        return Embed {
+            title: kind.title().chars().take(TITLE_LIMIT).collect(),
+            url: link(event.run_url.as_ref()),
+            description: Some(run_summary(event)),
+            color: kind.colour(),
+            fields,
+        };
+    }
+
+    // The video kinds explain themselves in prose above the fields.
+    let mut fields = Vec::with_capacity(7);
 
     push_field(&mut fields, "Game", field_text(event.game.as_ref(), FIELD_VALUE_LIMIT), true);
     push_field(&mut fields, "Runner", field_text(event.runner.as_ref(), FIELD_VALUE_LIMIT), true);
@@ -351,10 +401,6 @@ fn embed(event: &RunEvent, now: &str) -> Embed {
         description: field_text(event.detail.as_ref(), FIELD_VALUE_LIMIT),
         color: kind.colour(),
         fields,
-        footer: Footer {
-            text: FOOTER.to_string(),
-        },
-        timestamp: now.to_string(),
     }
 }
 
@@ -419,7 +465,7 @@ async fn post(url: &str, message: &Message) -> AppResult<()> {
 
 /// Sends `events` as embeds, ten to a message.
 ///
-/// Returns how many embeds were delivered. Nothing here decides *whether* an
+/// Returns how many run messages were delivered. Nothing here decides *whether* an
 /// event is worth sending — the five toggles do that, before this is called.
 pub async fn send(events: &[RunEvent]) -> AppResult<usize> {
     let Some(url) = secrets::discord_webhook()? else {
@@ -434,13 +480,12 @@ pub async fn send(events: &[RunEvent]) -> AppResult<usize> {
     // the vault by hand, still must not send run data to a non-Discord host.
     parse(&url)?;
 
-    let now = chrono::Utc::now().to_rfc3339();
     let mut sent = 0usize;
 
     for chunk in events.chunks(EMBEDS_PER_MESSAGE) {
         let message = Message {
             content: None,
-            embeds: chunk.iter().map(|e| embed(e, &now)).collect(),
+            embeds: chunk.iter().map(embed).collect(),
             allowed_mentions: AllowedMentions::default(),
         };
         post(&url, &message).await?;
@@ -550,57 +595,158 @@ mod tests {
     }
 
     #[test]
-    fn the_embed_follows_the_agreed_shape() {
+    fn a_new_run_is_a_compact_embed() {
         let event = RunEvent {
             kind: Some(EventKind::NewRun),
-            game: Some("Half-Life".into()),
-            runner: Some("someone".into()),
-            category: Some("Any%".into()),
-            time: Some("20m 30s".into()),
-            video_url: Some("https://www.youtube.com/watch?v=abc".into()),
+            game: Some("Niwa".into()),
+            level_name: Some("Niwa".into()),
+            runner: Some("DuyThinhLu".into()),
+            duration_seconds: Some(17.879),
+            run_url: Some("https://www.speedrun.com/run/abc".into()),
             ..RunEvent::default()
         };
-        let built = embed(&event, "2026-01-01T00:00:00Z");
-
-        assert_eq!(built.title, "🚨 New Speedrun Submission");
-        assert_eq!(built.footer.text, "Sent by SRCTools");
-        assert_eq!(built.color, 0x0058_65F2);
-
-        let names: Vec<&str> = built.fields.iter().map(|f| f.name.as_str()).collect();
+        let built = embed(&event);
+        assert_eq!(built.title, "🏆 **New Run**");
+        assert_eq!(built.url.as_deref(), Some("https://www.speedrun.com/run/abc"));
         assert_eq!(
-            names,
-            ["Game", "Runner", "Category", "Time", "Status", "Video"]
+            built.description.as_deref(),
+            Some("Niwa in 0m 17s 879ms by DuyThinhLu")
         );
-        assert_eq!(built.fields[4].value, "Pending");
+        assert!(built.fields.is_empty());
+        assert_eq!(built.color, 0x0058_65F2);
+    }
+
+    #[test]
+    fn an_approved_run_is_a_compact_verified_embed() {
+        let event = RunEvent {
+            kind: Some(EventKind::Approved),
+            game: Some("Bhop pro".into()),
+            runner: Some("337Short337".into()),
+            level_name: Some("Niwa".into()),
+            time: Some("2:02:22.022".into()),
+            run_url: Some("https://www.speedrun.com/run/abc".into()),
+            ..RunEvent::default()
+        };
+        let built = embed(&event);
+        assert_eq!(built.title, "✅ **Run verified**");
+        assert_eq!(built.url.as_deref(), Some("https://www.speedrun.com/run/abc"));
+        assert_eq!(
+            built.description.as_deref(),
+            Some("Niwa in 2:02:22.022 by 337Short337")
+        );
+        assert!(built.fields.is_empty());
+        assert_eq!(built.color, 0x0057_F287);
+    }
+
+    #[test]
+    fn an_embed_carries_no_footer_and_no_timestamp() {
+        // Discord renders the two as one "Sent by SRCTools · Today at …" line
+        // under the embed. The channel already timestamps every message it
+        // shows, so the line said nothing twice and was asked to go.
+        let json = serde_json::to_value(embed(&RunEvent::default())).expect("serialises");
+        assert!(json.get("footer").is_none(), "no footer: {json}");
+        assert!(json.get("timestamp").is_none(), "no timestamp: {json}");
+    }
+
+    #[test]
+    fn a_new_run_rounds_time_to_milliseconds() {
+        let event = RunEvent {
+            duration_seconds: Some(66.6666),
+            ..RunEvent::default()
+        };
+        let built = embed(&event);
+        assert!(built.description.as_deref().unwrap().contains("1m 6s 667ms"));
+    }
+
+    #[test]
+    fn a_rejection_is_a_compact_embed_with_its_reason() {
+        let event = RunEvent {
+            kind: Some(EventKind::Rejected),
+            game: Some("Bhop pro".into()),
+            runner: Some("someone".into()),
+            level_name: Some("Niwa".into()),
+            time: Some("1:23.456".into()),
+            detail: Some("Timer starts before the first jump.".into()),
+            ..RunEvent::default()
+        };
+        let built = embed(&event);
+
+        assert_eq!(
+            built.description.as_deref(),
+            Some("Niwa in 1:23.456 by someone")
+        );
+        let names: Vec<&str> = built.fields.iter().map(|f| f.name.as_str()).collect();
+        assert_eq!(names, ["Reason"]);
+        assert_eq!(built.fields[0].value, "Timer starts before the first jump.");
+        assert_eq!(built.color, 0x00ED_4245);
+    }
+
+    #[test]
+    fn a_rejection_with_no_reason_recorded_claims_none() {
+        let event = RunEvent {
+            kind: Some(EventKind::Rejected),
+            runner: Some("someone".into()),
+            level_name: Some("Niwa".into()),
+            time: Some("1:23.456".into()),
+            ..RunEvent::default()
+        };
+        let built = embed(&event);
+        // What the runner was told is not something to invent.
+        assert_eq!(
+            built.description.as_deref(),
+            Some("Niwa in 1:23.456 by someone")
+        );
+        assert!(built.fields.is_empty());
+    }
+
+    #[test]
+    fn a_video_problem_keeps_its_detail_as_the_description() {
+        // Only rejections move detail into a field; the video kinds explain
+        // themselves in prose above the fields.
+        let event = RunEvent {
+            kind: Some(EventKind::VideoProblem),
+            detail: Some("The provider did not answer.".into()),
+            ..RunEvent::default()
+        };
+        let built = embed(&event);
+        assert_eq!(built.description.as_deref(), Some("The provider did not answer."));
+        assert!(built.fields.iter().all(|f| f.name != "Reason"));
     }
 
     #[test]
     fn missing_facts_are_left_out_rather_than_invented() {
-        let built = embed(&RunEvent::default(), "2026-01-01T00:00:00Z");
-        let names: Vec<&str> = built.fields.iter().map(|f| f.name.as_str()).collect();
-        // No game, runner, category or time were known, so none are claimed.
-        assert_eq!(names, ["Status", "Video"]);
-        assert_eq!(built.fields[1].value, "No video link");
+        let built = embed(&RunEvent {
+            kind: Some(EventKind::Rejected),
+            ..RunEvent::default()
+        });
+        // No map, time or runner were known, so none are claimed.
+        assert_eq!(
+            built.description.as_deref(),
+            Some("Unknown map in Unknown time by Unknown runner")
+        );
+        assert!(built.fields.is_empty());
     }
 
     #[test]
     fn a_bad_video_link_is_not_rendered_as_one() {
         let event = RunEvent {
+            kind: Some(EventKind::VideoProblem),
             video_url: Some("javascript:alert(1)".into()),
             ..RunEvent::default()
         };
-        let built = embed(&event, "2026-01-01T00:00:00Z");
+        let built = embed(&event);
         assert_eq!(built.fields.last().unwrap().value, "No video link");
     }
 
     #[test]
     fn long_values_are_trimmed_to_discords_limit() {
         let event = RunEvent {
-            game: Some("g".repeat(4000)),
+            kind: Some(EventKind::Approved),
+            level_name: Some("g".repeat(4000)),
             ..RunEvent::default()
         };
-        let built = embed(&event, "2026-01-01T00:00:00Z");
-        assert_eq!(built.fields[0].value.chars().count(), FIELD_VALUE_LIMIT);
+        let built = embed(&event);
+        assert!(built.description.as_deref().unwrap().chars().count() <= FIELD_VALUE_LIMIT + 40);
     }
 
     #[test]

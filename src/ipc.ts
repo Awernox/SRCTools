@@ -14,6 +14,8 @@
 
 import { invoke } from '@tauri-apps/api/core';
 
+import { t } from './i18n';
+
 import type {
   AppError,
   AuditEntry,
@@ -73,7 +75,7 @@ export function toAppError(value: unknown): AppError {
   }
   return {
     kind: 'internal',
-    message: 'Something went wrong, and no further detail was reported.',
+    message: t('error.unreported'),
     retryable: false,
     hint: null,
   };
@@ -426,7 +428,10 @@ export interface WebhookEvent {
   game?: string | null;
   runner?: string | null;
   category?: string | null;
+  /** The level/map name, when the run is on a level rather than the full game. */
+  levelName?: string | null;
   time?: string | null;
+  durationSeconds?: number | null;
   status?: string | null;
   videoUrl?: string | null;
   runUrl?: string | null;
@@ -449,7 +454,7 @@ export const webhook = {
   status: () => call<WebhookStatus>('webhook_status'),
   /** Posts the confirmation line into the channel. */
   test: () => call<void>('webhook_test'),
-  /** Returns how many embeds were delivered. */
+  /** Returns how many run messages were delivered. */
   send: (events: WebhookEvent[]) => call<number>('webhook_send', { events }),
 };
 
@@ -490,5 +495,3 @@ export const updates = {
    */
   check: () => call<UpdateCheck>('check_update'),
 };
-
-

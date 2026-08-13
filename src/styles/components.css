@@ -276,6 +276,76 @@
   cursor: not-allowed;
 }
 
+/* --------------------------------------------------------------- switch */
+
+/*
+ * An on/off switch. Green on means on: the accent track reads "this posts",
+ * the gray track reads "this does not", at a glance across a list.
+ */
+.switch {
+  display: inline-flex;
+  flex-shrink: 0;
+  cursor: pointer;
+  /* Contains the hidden input, which is positioned out of the layout rather
+     than hidden, so it keeps focus and keyboard behaviour. */
+  position: relative;
+}
+
+.switch__input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.switch__track {
+  display: inline-flex;
+  align-items: center;
+  width: 34px;
+  height: 18px;
+  padding: 2px;
+  border-radius: var(--radius-full);
+  background: var(--bg-input);
+  border: 1px solid var(--border-strong);
+  transition:
+    background var(--fast) var(--ease),
+    border-color var(--fast) var(--ease);
+}
+
+.switch__thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: var(--radius-full);
+  background: var(--text-tertiary);
+  transition:
+    transform var(--fast) var(--ease),
+    background var(--fast) var(--ease);
+}
+
+.switch__input:checked + .switch__track {
+  background: var(--ok-soft);
+  border-color: var(--ok);
+}
+
+.switch__input:checked + .switch__track .switch__thumb {
+  background: var(--ok);
+  transform: translateX(16px);
+}
+
+.switch__input:focus-visible + .switch__track {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.switch:has(.switch__input:disabled) {
+  cursor: not-allowed;
+}
+
+.switch__input:disabled + .switch__track {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 /* -------------------------------------------------------------- slider */
 
 .slider {

@@ -10,6 +10,7 @@
 
 import { create } from 'zustand';
 
+import type { TranslationKey } from '../i18n';
 import { errorText, queue as queueIpc } from '../ipc';
 import type { QueueFilter, RunSummary, VideoCheck, VideoStatus } from '../types';
 import { isProblem, isUnverified } from '../types';
@@ -21,7 +22,12 @@ export type SortKey = 'game' | 'category' | 'player' | 'time' | 'submitted' | 's
 
 export interface QueueColumn {
   id: SortKey;
-  label: string;
+  /**
+   * Catalogue key rather than a finished string: the column headers, the
+   * "visible columns" menu and the Settings list all render the same column,
+   * and a literal here would leave all three in English.
+   */
+  labelKey: TranslationKey;
   /** Grid track for this column. */
   width: string;
   align?: 'right';
@@ -32,13 +38,13 @@ export interface QueueColumn {
  * and cannot be hidden, because bulk moderation depends on it.
  */
 export const QUEUE_COLUMNS: readonly QueueColumn[] = [
-  { id: 'video', label: 'Video', width: '104px' },
-  { id: 'game', label: 'Game', width: 'minmax(150px, 1.5fr)' },
-  { id: 'category', label: 'Category', width: 'minmax(120px, 1.1fr)' },
-  { id: 'player', label: 'Runner', width: 'minmax(110px, 1fr)' },
-  { id: 'time', label: 'Time', width: '108px', align: 'right' },
-  { id: 'submitted', label: 'Submitted', width: '124px' },
-  { id: 'status', label: 'Status', width: '96px' },
+  { id: 'video', labelKey: 'queue.col.video', width: '104px' },
+  { id: 'game', labelKey: 'queue.col.game', width: 'minmax(150px, 1.5fr)' },
+  { id: 'category', labelKey: 'queue.col.category', width: 'minmax(120px, 1.1fr)' },
+  { id: 'player', labelKey: 'queue.col.runner', width: 'minmax(110px, 1fr)' },
+  { id: 'time', labelKey: 'queue.col.time', width: '108px', align: 'right' },
+  { id: 'submitted', labelKey: 'queue.col.submitted', width: '124px' },
+  { id: 'status', labelKey: 'queue.col.status', width: '96px' },
 ];
 
 /**
@@ -277,8 +283,8 @@ export const useQueue = create<QueueState>((set, get) => ({
         fetchedAt: page.fetchedAt,
         loading: false,
         // A run that is no longer in the page cannot stay selected or focused.
-        selected: new Set([...get().selected].filter((id) => page.runs.some((r) => r.id === id))),
-        focusIndex: page.runs.length > 0 ? 0 : -1,
+         selected: new Set([...get().selected].filter((id) => page.runs.some((r) => r.id === id))),
+         focusIndex: page.runs.length > 0 ? 0 : -1,
       });
       if (settings.autoCheckVideos) void get().checkVideos(false);
     } catch (err) {

@@ -6,7 +6,7 @@
  * is the same rule the queue filter box follows.
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   ArrowRight,
   Gamepad2,
@@ -21,6 +21,8 @@ import {
 } from 'lucide-react';
 
 import { APP_NAME, BRAND_MARK } from './Brand';
+import { plural } from '../format';
+import { useT, type TranslationKey } from '../i18n';
 import { useApp, type PageId } from '../store/app';
 import { useQueue } from '../store/queue';
 import { useSession } from '../store/session';
@@ -35,25 +37,69 @@ interface PaletteItem {
   run: () => void;
 }
 
-const PAGE_ICONS: Record<PageId, React.ReactNode> = {
-  dashboard: <LayoutDashboard size={15} />,
-  queue: <ListChecks size={15} />,
-  games: <Gamepad2 size={15} />,
-  history: <Timer size={15} />,
-  stats: <Star size={15} />,
-  settings: <Settings size={15} />,
-};
+/**
+ * The six pages, in the order the palette lists them.
+ *
+ * One table rather than six near-identical entries built inline, and it carries
+ * catalogue keys rather than English: the title is the same string the sidebar
+ * uses, so a page is never called two different things.
+ */
+const PAGES: Array<{
+  id: PageId;
+  titleKey: TranslationKey;
+  descKey: TranslationKey;
+  icon: ReactNode;
+}> = [
+  {
+    id: 'dashboard',
+    titleKey: 'nav.dashboard',
+    descKey: 'palette.desc.dashboard',
+    icon: <LayoutDashboard size={15} />,
+  },
+  {
+    id: 'queue',
+    titleKey: 'nav.queue',
+    descKey: 'palette.desc.queue',
+    icon: <ListChecks size={15} />,
+  },
+  {
+    id: 'games',
+    titleKey: 'nav.games',
+    descKey: 'palette.desc.games',
+    icon: <Gamepad2 size={15} />,
+  },
+  {
+    id: 'history',
+    titleKey: 'nav.history',
+    descKey: 'palette.desc.history',
+    icon: <Timer size={15} />,
+  },
+  {
+    id: 'stats',
+    titleKey: 'nav.stats',
+    descKey: 'palette.desc.stats',
+    icon: <Star size={15} />,
+  },
+  {
+    id: 'settings',
+    titleKey: 'nav.settings',
+    descKey: 'palette.desc.settings',
+    icon: <Settings size={15} />,
+  },
+];
 
-const PAGE_DESC: Record<PageId, string> = {
-  dashboard: 'What is waiting for you today',
-  queue: 'Runs to review',
-  games: 'Your moderated games',
-  history: 'Actions taken from this machine',
-  stats: 'Your moderation numbers',
-  settings: 'Appearance, keys, credentials',
-};
+/**
+ * "Half-Life · Any%" for a queued run.
+ *
+ * Skips whichever half Speedrun.com did not return, so a run with no game name
+ * does not read as a separator with nothing on one side of it.
+ */
+function runSubtitle(gameName: string | null, categoryName: string | null): string {
+  return [gameName, categoryName].filter((part): part is string => part !== null).join(' · ');
+}
 
 export function CommandPalette() {
+  const t = useT();
   const open = useApp((state) => state.paletteOpen);
   const close = useApp((state) => state.togglePalette);
   const [query, setQuery] = useState('');
@@ -80,70 +126,20 @@ export function CommandPalette() {
       !needle || (text ?? '').toLowerCase().includes(needle);
 
     const built: PaletteItem[] = [
-      {
-        id: 'page:dashboard',
-        title: 'Dashboard',
-        sub: PAGE_DESC.dashboard,
-        icon: PAGE_ICONS.dashboard,
+      ...PAGES.map((page) => ({
+        id: `page:${page.id}`,
+        title: t(page.titleKey),
+        sub: t(page.descKey),
+        icon: page.icon,
         run: () => {
           close(false);
-          go('dashboard');
+          go(page.id);
         },
-      },
-      {
-        id: 'page:queue',
-        title: 'Review queue',
-        sub: PAGE_DESC.queue,
-        icon: PAGE_ICONS.queue,
-        run: () => {
-          close(false);
-          go('queue');
-        },
-      },
-      {
-        id: 'page:games',
-        title: 'Games',
-        sub: PAGE_DESC.games,
-        icon: PAGE_ICONS.games,
-        run: () => {
-          close(false);
-          go('games');
-        },
-      },
-      {
-        id: 'page:history',
-        title: 'History',
-        sub: PAGE_DESC.history,
-        icon: PAGE_ICONS.history,
-        run: () => {
-          close(false);
-          go('history');
-        },
-      },
-      {
-        id: 'page:stats',
-        title: 'Statistics',
-        sub: PAGE_DESC.stats,
-        icon: PAGE_ICONS.stats,
-        run: () => {
-          close(false);
-          go('stats');
-        },
-      },
-      {
-        id: 'page:settings',
-        title: 'Settings',
-        sub: PAGE_DESC.settings,
-        icon: PAGE_ICONS.settings,
-        run: () => {
-          close(false);
-          go('settings');
-        },
-      },
+      })),
       {
         id: 'cmd:refresh',
-        title: 'Refresh current view',
-        sub: 'Reload from Speedrun.com',
+        title: t('palette.refresh'),
+        sub: t('palette.refreshSub'),
         icon: <RefreshCw size={15} />,
         run: () => {
           close(false);
@@ -156,8 +152,11 @@ export function CommandPalette() {
       },
       {
         id: 'cmd:checkvideos',
-        title: 'Check videos in the queue',
-        sub: queue.runs.length > 0 ? `${queue.runs.length} runs loaded` : 'Nothing loaded yet',
+        title: t('palette.checkVideos'),
+        sub:
+          queue.runs.length > 0
+            ? t('palette.runsLoaded', { runs: plural(queue.runs.length, 'run') })
+            : t('palette.nothingLoaded'),
         icon: <Video size={15} />,
         run: () => {
           close(false);
@@ -173,7 +172,7 @@ export function CommandPalette() {
       built.push({
         id: `game:${game.id}`,
         title: game.name,
-        sub: game.abbreviation ?? 'Game',
+        sub: game.abbreviation ?? t('palette.gameFallback'),
         icon: <Gamepad2 size={15} />,
         run: () => {
           close(false);
@@ -188,7 +187,7 @@ export function CommandPalette() {
       built.push({
         id: `run:${run.id}`,
         title: run.playerLabel,
-        sub: `${run.gameName} · ${run.categoryName ?? ''}`.replace(/ · $/, ''),
+        sub: runSubtitle(run.gameName, run.categoryName),
         icon: <ArrowRight size={15} />,
         run: () => {
           close(false);
@@ -200,7 +199,7 @@ export function CommandPalette() {
 
     return built;
     // The store actions are stable references; rebuilding per keystroke is fine.
-  }, [open, query]);
+  }, [open, query, t]);
 
   if (!open) return null;
 
@@ -239,8 +238,8 @@ export function CommandPalette() {
               setActive(0);
             }}
             onKeyDown={onKeyDown}
-            placeholder="Type a page, game or run…"
-            aria-label="Command palette search"
+            placeholder={t('palette.placeholder')}
+            aria-label={t('palette.searchAria')}
           />
           <img
             src={BRAND_MARK}
@@ -253,7 +252,7 @@ export function CommandPalette() {
         <div className="palette__list" role="listbox">
           {visible.length === 0 && (
             <div style={{ padding: '18px 12px', textAlign: 'center' }}>
-              <span className="dim">No matches for “{query}”.</span>
+              <span className="dim">{t('palette.noMatches', { query })}</span>
             </div>
           )}
           {visible.map((item, index) => (
@@ -277,16 +276,14 @@ export function CommandPalette() {
           <span className="kbd-row">
             <kbd className="kbd">↑</kbd>
             <kbd className="kbd">↓</kbd>
-            <span>navigate</span>
+            <span>{t('palette.navigate')}</span>
           </span>
           <span className="kbd-row">
             <kbd className="kbd">Enter</kbd>
-            <span>open</span>
+            <span>{t('palette.openHint')}</span>
           </span>
           <span style={{ flex: 1 }} />
-          <span>
-            {APP_NAME} · Ctrl+K to toggle
-          </span>
+          <span>{t('palette.toggleHint', { app: APP_NAME })}</span>
         </div>
       </div>
     </div>

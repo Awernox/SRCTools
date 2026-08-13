@@ -232,6 +232,11 @@ export interface RunSummary {
   status: RunStatus;
   examinerId: string | null;
   rejectionReason: string | null;
+  /**
+   * ISO-8601 timestamp of the verdict. Null while the run is pending, and null
+   * on old runs the API never recorded one for.
+   */
+  verifyDate: string | null;
   date: string | null;
   submitted: string | null;
   comment: string | null;
@@ -618,5 +623,11 @@ export interface StartupReport {
   version: string;
   databasePath: string;
   hasApiKey: boolean;
+  /**
+   * The project's GitHub page, read from the Rust manifest. Null when no
+   * repository is configured — the same source the update check uses, so the
+   * two can never disagree.
+   */
+  repositoryUrl: string | null;
   warnings: string[];
 }

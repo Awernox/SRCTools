@@ -351,27 +351,39 @@ impl Run {
             .collect()
     }
 
-    /// Extracts an ID from a field that may be a bare string or an embedded
-    /// `{data: {...}}` object.
+    /// Extracts an ID from a field that may be a bare string, an embedded
+    /// `{data: {...}}` object, or a plain `{id: ...}` object.
     fn embedded_id(value: &Option<serde_json::Value>) -> Option<String> {
         match value.as_ref()? {
             serde_json::Value::String(s) if !s.is_empty() => Some(s.clone()),
-            serde_json::Value::Object(o) => o
-                .get("data")
-                .and_then(|d| d.get("id"))
-                .and_then(|i| i.as_str())
-                .map(str::to_string),
+            serde_json::Value::Object(o) => {
+                // `{data: {id: ...}}` — the embedded form.
+                if let Some(id) = o
+                    .get("data")
+                    .and_then(|d| d.get("id"))
+                    .and_then(|i| i.as_str())
+                {
+                    return Some(id.to_string());
+                }
+                // `{id: ...}` — a plain object form some endpoints return.
+                o.get("id").and_then(|i| i.as_str()).map(str::to_string)
+            }
             _ => None,
         }
     }
 
     /// Deserialises an embedded resource, returning `None` when the field held
-    /// only an ID reference.
+    /// only an ID reference. Accepts both `{data: {...}}` and plain `{...}`.
     fn embedded_object<T: for<'de> Deserialize<'de>>(
         value: &Option<serde_json::Value>,
     ) -> Option<T> {
         let obj = value.as_ref()?.as_object()?;
-        serde_json::from_value(obj.get("data")?.clone()).ok()
+        // `{data: {...}}` — the embedded form.
+        if let Some(data) = obj.get("data") {
+            return serde_json::from_value(data.clone()).ok();
+        }
+        // `{...}` — a plain object form some endpoints return.
+        serde_json::from_value(serde_json::Value::Object(obj.clone())).ok()
     }
 
     pub fn game_id(&self) -> Option<String> {

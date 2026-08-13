@@ -18,6 +18,7 @@ import { ShortcutHelp } from './components/ShortcutHelp';
 import { Sidebar } from './components/Sidebar';
 import { ConfirmDialog, Toasts } from './components/Toasts';
 import { UpdateDialog } from './components/UpdateDialog';
+import { t } from './i18n';
 import { Pages } from './pages';
 import { Setup } from './pages/Setup';
 import { useLivePresence } from './hooks/usePresence';
@@ -50,6 +51,7 @@ export default function App() {
   // Hiding the labels is what makes the column narrow, whether that came from
   // the collapse control or from the standing preference.
   const sidebarText = useSession((state) => state.settings.sidebarText);
+  const sidebarPosition = useSession((state) => state.settings.sidebarPosition);
   const togglePalette = useApp((state) => state.togglePalette);
   const toggleHelp = useApp((state) => state.toggleHelp);
   const loadLayout = useApp((state) => state.loadLayout);
@@ -65,6 +67,9 @@ export default function App() {
   const refreshGames = useSession((state) => state.refreshGames);
 
   const notifyNewRuns = useSession((state) => state.settings.notifyNewRuns);
+  const notifyVideoProblems = useSession((state) => state.settings.notifyVideoProblems);
+  const webhookEnabled = useSession((state) => state.settings.webhookEnabled);
+  const webhookReady = useWebhook((state) => state.status.configured);
   const checkInterval = useSession((state) => state.settings.checkInterval);
 
   const discordEnabled = useSession((state) => state.settings.discordEnabled);
@@ -129,6 +134,19 @@ export default function App() {
         useWatcher.getState().onRuns(event.payload),
       ),
     );
+    // Verdicts reached anywhere — by another moderator, or by this one on the
+    // Speedrun.com site. The app cannot learn about those from its own actions,
+    // and most verdicts are not reached in this window.
+    track(
+      listen<NewRunsEvent>('srctools://approved-runs', (event) =>
+        useWatcher.getState().onApproved(event.payload),
+      ),
+    );
+    track(
+      listen<NewRunsEvent>('srctools://rejected-runs', (event) =>
+        useWatcher.getState().onRejected(event.payload),
+      ),
+    );
     track(
       listen<WatcherStatus>('srctools://watcher', (event) =>
         useWatcher.getState().onStatus(event.payload),
@@ -166,15 +184,26 @@ export default function App() {
     void useDashboard.getState().load(true);
   }, [ready, startup]);
 
-  // The watcher follows the settings: it polls when new-run notifications are on
-  // and a key exists, re-times itself when the interval changes, and stops
-  // otherwise. `sync` hands those two values to the Rust loop, which owns the
-  // timer — a webview one would be throttled to about once a minute in the
+  // The watcher follows the settings: it polls when a key exists and something
+  // is listening for what it finds, re-times itself when the interval changes,
+  // and stops otherwise. `sync` hands the outcome to the Rust loop, which owns
+  // the timer — a webview one would be throttled to about once a minute in the
   // background, which is precisely when notifications matter.
+  //
+  // Every input to that decision is listed: the webhook is one of the surfaces
+  // the loop feeds, so turning it on has to start the loop.
   useEffect(() => {
     if (!ready) return;
     void useWatcher.getState().sync();
-  }, [ready, hasApiKey, notifyNewRuns, checkInterval]);
+  }, [
+    ready,
+    hasApiKey,
+    notifyNewRuns,
+    notifyVideoProblems,
+    webhookEnabled,
+    webhookReady,
+    checkInterval,
+  ]);
 
   useEffect(() => () => void useWatcher.getState().stop(), []);
 
@@ -206,7 +235,7 @@ export default function App() {
   useEffect(() => {
     if (!startup) return;
     for (const warning of startup.warnings) {
-      useUi.getState().warning('Startup warning', warning);
+      useUi.getState().warning(t('open.startupWarning'), warning);
     }
   }, [startup]);
 
@@ -261,7 +290,11 @@ export default function App() {
   }
 
   return (
-    <div className="app" data-sidebar-collapsed={sidebarCollapsed || !sidebarText}>
+    <div
+      className="app"
+      data-sidebar-collapsed={sidebarCollapsed || !sidebarText}
+      data-sidebar-position={sidebarPosition}
+    >
       <Brand />
       <Sidebar />
       <TopBar onRefresh={refresh} />

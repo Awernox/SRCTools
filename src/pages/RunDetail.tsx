@@ -52,6 +52,7 @@ import {
   Tooltip,
 } from '../components/ui';
 import {
+  ABSENT,
   confidenceLabel,
   confidenceMeaning,
   confidenceTone,
@@ -106,6 +107,7 @@ export function RunDetailPanel({ runId, onClose, onReject, onAdvance }: RunDetai
   const refresh = useDetail((state) => state.refresh);
 
   const busy = useModeration((state) => state.busy.has(runId));
+  const t = useT();
 
   useEffect(() => {
     void open(runId);
@@ -122,7 +124,7 @@ export function RunDetailPanel({ runId, onClose, onReject, onAdvance }: RunDetai
         <PanelHeader onClose={onClose} />
         <div className="detail__body">
           <ErrorState
-            title="Could not load this run"
+            title={t('detail.loadFailed')}
             message={error}
             onRetry={() => void refresh()}
           />
@@ -158,7 +160,7 @@ export function RunDetailPanel({ runId, onClose, onReject, onAdvance }: RunDetai
         <div className="row" style={{ alignItems: 'flex-start', gap: 8 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="detail__title">
-              <Maybe value={run.gameName} title="Speedrun.com did not name the game" />
+              <Maybe value={run.gameName} title={t('detail.noGameName')} />
             </div>
             <div className="detail__meta">
               <Badge tone={runStatusTone(run.status)} small dot>
@@ -180,24 +182,24 @@ export function RunDetailPanel({ runId, onClose, onReject, onAdvance }: RunDetai
           </div>
 
           <div className="row" style={{ gap: 4, flexShrink: 0 }}>
-            <Tooltip label="Reload this run" detail="Re-reads the run, its rules and its videos.">
+            <Tooltip label={t('detail.reload')} detail={t('detail.reloadHint')}>
               <button
                 type="button"
                 className="btn btn--sm btn--ghost btn--icon"
                 onClick={() => void refresh()}
                 disabled={loading}
-                aria-label="Reload this run"
+                aria-label={t('detail.reload')}
               >
                 {loading ? <Spinner /> : <RefreshCw size={13} />}
               </button>
             </Tooltip>
-            <Tooltip label="Open on Speedrun.com">
+            <Tooltip label={t('action.openOnSrc')}>
               <button
                 type="button"
                 className="btn btn--sm btn--ghost btn--icon"
                 onClick={() => void openExternal(run.weblink)}
                 disabled={!run.weblink}
-                aria-label="Open on Speedrun.com"
+                aria-label={t('action.openOnSrc')}
               >
                 <ExternalLink size={13} />
               </button>
@@ -206,8 +208,8 @@ export function RunDetailPanel({ runId, onClose, onReject, onAdvance }: RunDetai
               type="button"
               className="btn btn--sm btn--ghost btn--icon"
               onClick={onClose}
-              aria-label="Close the detail panel"
-              title="Close (Esc)"
+              aria-label={t('detail.close')}
+              title={t('detail.closeEsc')}
             >
               <X size={13} />
             </button>
@@ -250,7 +252,7 @@ export function RunDetailPanel({ runId, onClose, onReject, onAdvance }: RunDetai
           }}
         >
           {busy ? <Spinner /> : <Check size={13} />}
-          Verify
+          {t('action.verify')}
         </button>
 
         <button
@@ -260,29 +262,23 @@ export function RunDetailPanel({ runId, onClose, onReject, onAdvance }: RunDetai
           onClick={() => onReject(run)}
         >
           <Ban size={13} />
-          Reject…
+          {t('detail.reject')}
         </button>
 
         <div className="toolbar__spacer" />
 
-        <Tooltip
-          label="Copy the run id"
-          detail="Useful when reporting a run to another moderator."
-        >
+        <Tooltip label={t('detail.copyId')} detail={t('detail.copyIdHint')}>
           <button
             type="button"
             className="btn btn--sm btn--ghost btn--icon"
-            onClick={() => void copyToClipboard(run.id, 'Run id copied')}
-            aria-label="Copy the run id"
+            onClick={() => void copyToClipboard(run.id, t('queue.row.idCopied'))}
+            aria-label={t('detail.copyId')}
           >
             <Copy size={13} />
           </button>
         </Tooltip>
 
-        <Tooltip
-          label="Delete permanently"
-          detail="Removes the run from Speedrun.com entirely. Rejecting is almost always the right action instead."
-        >
+        <Tooltip label={t('detail.deleteTooltip')} detail={t('detail.deleteHint')}>
           <button
             type="button"
             className="btn btn--sm btn--danger"
@@ -297,7 +293,7 @@ export function RunDetailPanel({ runId, onClose, onReject, onAdvance }: RunDetai
             }}
           >
             <Trash2 size={13} />
-            Delete…
+            {t('detail.delete')}
           </button>
         </Tooltip>
       </footer>
@@ -307,17 +303,18 @@ export function RunDetailPanel({ runId, onClose, onReject, onAdvance }: RunDetai
 
 /** Header shown while the run itself is not available yet. */
 function PanelHeader({ onClose }: { onClose: () => void }) {
+  const t = useT();
   return (
     <header className="detail__header">
       <div className="row">
         <span className="muted" style={{ flex: 1, fontSize: 'var(--text-sm)' }}>
-          Run detail
+          {t('detail.title')}
         </span>
         <button
           type="button"
           className="btn btn--sm btn--ghost btn--icon"
           onClick={onClose}
-          aria-label="Close the detail panel"
+          aria-label={t('detail.close')}
         >
           <X size={13} />
         </button>
@@ -359,11 +356,15 @@ function Section({
  * "recommended action" anywhere, because the engine has no such output.
  */
 function AnalysisSection({ detail }: { detail: RunDetail }) {
+  const t = useT();
   const expandAnalysis = useSession((state) => state.settings.expandAnalysis);
   const analysis = detail.analysis;
   const info = recommendationInfo(analysis.recommendation);
 
-  const counts: Array<[string, number]> = [
+  // Counted nouns, not a label plus an "s": Russian and Ukrainian pick between
+  // three endings on the last digits, so the whole phrase has to come from the
+  // plural catalogue.
+  const counts: Array<['critical' | 'warning' | 'note', number]> = [
     ['critical', analysis.criticalCount],
     ['warning', analysis.warningCount],
     ['note', analysis.infoCount],
@@ -372,19 +373,18 @@ function AnalysisSection({ detail }: { detail: RunDetail }) {
   return (
     <Section
       icon={<Sparkles size={13} />}
-      title="Automated checks"
+      title={t('detail.analysis.title')}
       actions={
         <span className="row" style={{ gap: 6 }}>
           {counts
             .filter(([, count]) => count > 0)
-            .map(([label, count]) => (
+            .map(([noun, count]) => (
               <Badge
-                key={label}
+                key={noun}
                 small
-                tone={label === 'critical' ? 'danger' : label === 'warning' ? 'warn' : 'info'}
+                tone={noun === 'critical' ? 'danger' : noun === 'warning' ? 'warn' : 'info'}
               >
-                {count} {label}
-                {count === 1 ? '' : 's'}
+                {plural(count, noun)}
               </Badge>
             ))}
         </span>
@@ -408,8 +408,7 @@ function AnalysisSection({ detail }: { detail: RunDetail }) {
 
         {analysis.findings.length === 0 ? (
           <p className="dim" style={{ fontSize: 'var(--text-xs)', lineHeight: 1.6 }}>
-            No check raised anything. That is not a verdict either — the checks
-            only cover what the API and the video providers can tell SRCTools.
+            {t('detail.analysis.noFindings')}
           </p>
         ) : (
           <details open={expandAnalysis}>
@@ -422,7 +421,9 @@ function AnalysisSection({ detail }: { detail: RunDetail }) {
                 listStyle: 'none',
               }}
             >
-              {plural(analysis.findings.length, 'finding')} — none of them decide anything
+              {t('detail.analysis.findingsSummary', {
+                findings: plural(analysis.findings.length, 'finding'),
+              })}
             </summary>
             <div className="col" style={{ gap: 7 }}>
               {analysis.findings.map((finding) => (
@@ -434,8 +435,7 @@ function AnalysisSection({ detail }: { detail: RunDetail }) {
 
         {analysis.hasUnverifiable && (
           <p className="dim" style={{ fontSize: 'var(--text-xs)', lineHeight: 1.6 }}>
-            Some checks could not run because the data they need was not
-            available. Missing information is not evidence of a problem.
+            {t('detail.analysis.unverifiable')}
           </p>
         )}
       </div>
@@ -471,6 +471,7 @@ function FindingRow({ finding }: { finding: Finding }) {
 /* ----------------------------------------------------------------- videos */
 
 function VideoSection({ run, checks }: { run: RunSummary; checks: VideoCheck[] }) {
+  const t = useT();
   const expanded = useDetail((state) => state.expandedVideos);
   const setExpanded = useDetail((state) => state.setExpandedVideos);
   const rechecking = useDetail((state) => state.rechecking);
@@ -479,7 +480,7 @@ function VideoSection({ run, checks }: { run: RunSummary; checks: VideoCheck[] }
   return (
     <Section
       icon={<Video size={13} />}
-      title="Video"
+      title={t('detail.video.title')}
       actions={
         run.videoUrls.length > 0 ? (
           <span className="row" style={{ gap: 4 }}>
@@ -487,21 +488,21 @@ function VideoSection({ run, checks }: { run: RunSummary; checks: VideoCheck[] }
               type="button"
               className="btn btn--sm btn--ghost"
               onClick={() => setExpanded(!expanded)}
-              title={expanded ? 'Hide the details' : 'Show titles, durations and thumbnails'}
+              title={expanded ? t('detail.video.hideDetails') : t('detail.video.showDetails')}
             >
               {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-              {expanded ? 'Less' : 'More'}
+              {expanded ? t('detail.video.less') : t('detail.video.more')}
             </button>
             <Tooltip
-              label="Check again"
-              detail="Asks the provider again, ignoring the cached answer."
+              label={t('detail.video.checkAgain')}
+              detail={t('detail.video.checkAgainHint')}
             >
               <button
                 type="button"
                 className="btn btn--sm btn--ghost btn--icon"
                 onClick={() => void recheck()}
                 disabled={rechecking}
-                aria-label="Check the videos again"
+                aria-label={t('detail.video.checkAgainAria')}
               >
                 {rechecking ? <Spinner /> : <RefreshCw size={12} />}
               </button>
@@ -513,27 +514,21 @@ function VideoSection({ run, checks }: { run: RunSummary; checks: VideoCheck[] }
       {run.videoUrls.length === 0 ? (
         <div className="notice notice--unknown">
           <Info size={15} />
-          <span>
-            {run.videoText ? (
-              <>
-                No video link was submitted. The runner wrote:{' '}
-                <span data-selectable>“{run.videoText}”</span>. Whether that is
-                acceptable depends on this game’s rules.
-              </>
-            ) : (
-              <>
-                No video was submitted with this run. Whether a video is required
-                depends on this game’s rules, shown below.
-              </>
-            )}
+          {/* The runner's own words are quoted inside the sentence, so the whole
+              notice is selectable rather than just the quotation. */}
+          <span data-selectable>
+            {run.videoText
+              ? t('detail.video.noLinkWithText', { text: run.videoText })
+              : t('detail.video.noLink')}
           </span>
         </div>
       ) : checks.length === 0 ? (
         <div className="notice notice--unknown">
           <Info size={15} />
           <span>
-            {plural(run.videoUrls.length, 'link')} submitted, not checked yet.
-            Use <em>Check again</em> above, or open them yourself.
+            {t('detail.video.notCheckedYet', {
+              links: plural(run.videoUrls.length, 'link'),
+            })}
           </span>
         </div>
       ) : (
@@ -590,11 +585,11 @@ function VideoItem({
         </span>
         {check.fromCache && (
           <Tooltip
-            label="Cached answer"
-            detail={`Checked ${formatRelative(check.checkedAt)}. Use “Check again” to ask the provider now.`}
+            label={t('detail.video.cached')}
+            detail={t('detail.video.cachedHint', { when: formatRelative(check.checkedAt) })}
           >
             <span className="dim" style={{ fontSize: 'var(--text-xs)' }}>
-              cached
+              {t('detail.video.cachedBadge')}
             </span>
           </Tooltip>
         )}
@@ -629,7 +624,7 @@ function VideoItem({
         <button
           type="button"
           className="btn btn--sm btn--ghost btn--icon"
-          onClick={() => void copyToClipboard(check.url, 'Video link copied')}
+          onClick={() => void copyToClipboard(check.url, t('detail.video.linkCopied'))}
           aria-label={t('video.copyLink')}
           title={t('video.copyLink')}
         >
@@ -662,7 +657,7 @@ function VideoItem({
               key={embed.url}
               className="video-item__frame"
               src={embed.url}
-              title={`${embed.provider} player`}
+              title={t('detail.video.playerTitle', { provider: embed.provider })}
               // No `allow-same-origin`: the player runs with no access to this
               // app's origin, which is what makes framing a third-party page
               // acceptable at all. `allow-presentation` covers casting.
@@ -681,29 +676,29 @@ function VideoItem({
       {expanded && (
         <div className="video-item__detail" style={{ paddingTop: 0 }}>
           <div className="dl">
-            <span className="dl__key">Title</span>
+            <span className="dl__key">{t('detail.video.titleField')}</span>
             <span className="dl__val">
-              <Maybe value={meta.title} title="The provider did not return a title" />
+              <Maybe value={meta.title} title={t('detail.video.noTitle')} />
             </span>
-            <span className="dl__key">Channel</span>
+            <span className="dl__key">{t('detail.video.channel')}</span>
             <span className="dl__val">
-              <Maybe value={meta.channel} title="The provider did not return a channel" />
+              <Maybe value={meta.channel} title={t('detail.video.noChannel')} />
             </span>
-            <span className="dl__key">Length</span>
+            <span className="dl__key">{t('detail.video.length')}</span>
             <span className="dl__val">
               {meta.durationSeconds === null ? (
-                <Absent title="The provider did not return a duration" />
+                <Absent title={t('detail.video.noDuration')} />
               ) : (
                 <>
                   <span className="num">{formatClock(meta.durationSeconds)}</span>
                   {runSeconds !== null && meta.durationSeconds + 1 < runSeconds && (
                     <Tooltip
-                      label="Shorter than the submitted time"
-                      detail="Trimmed uploads, split videos and separate load-removal footage all do this legitimately. It is a flag, not a fault."
+                      label={t('detail.video.shorter')}
+                      detail={t('detail.video.shorterHint')}
                     >
                       <span style={{ marginLeft: 6 }}>
                         <Badge tone="warn" small>
-                          shorter than the run
+                          {t('detail.video.shorterBadge')}
                         </Badge>
                       </span>
                     </Tooltip>
@@ -711,15 +706,15 @@ function VideoItem({
                 </>
               )}
             </span>
-            <span className="dl__key">Uploaded</span>
+            <span className="dl__key">{t('detail.video.uploaded')}</span>
             <span className="dl__val">
               {meta.uploadDate === null ? (
-                <Absent title="The provider did not return an upload date" />
+                <Absent title={t('detail.video.noUploadDate')} />
               ) : (
                 formatDate(meta.uploadDate)
               )}
             </span>
-            <span className="dl__key">Checked</span>
+            <span className="dl__key">{t('detail.video.checked')}</span>
             <span className="dl__val">{formatDateTime(check.checkedAt)}</span>
           </div>
         </div>
@@ -742,26 +737,31 @@ function VideoItem({
 
 /** What Speedrun.com actually holds about the run. No interpretation. */
 function FactsSection({ run }: { run: RunSummary }) {
+  const t = useT();
   const subcategories = run.variableLabels.filter((value) => value.isSubcategory);
   const others = run.variableLabels.filter((value) => !value.isSubcategory);
 
   return (
-    <Section icon={<Clock size={13} />} title="Submission">
+    <Section icon={<Clock size={13} />} title={t('detail.facts.title')}>
       <div className="dl">
-        <span className="dl__key">Time</span>
+        <span className="dl__key">{t('queue.col.time')}</span>
         <span className="dl__val num">
           {run.primaryDisplay ?? (run.primarySeconds === null ? <Absent /> : formatDuration(run.primarySeconds))}
         </span>
 
-        <span className="dl__key">Played</span>
+        <span className="dl__key">{t('detail.facts.played')}</span>
         <span className="dl__val">
-          {run.date === null ? <Absent title="No play date was given" /> : formatDate(run.date)}
+          {run.date === null ? (
+            <Absent title={t('detail.facts.noPlayDate')} />
+          ) : (
+            formatDate(run.date)
+          )}
         </span>
 
-        <span className="dl__key">Submitted</span>
+        <span className="dl__key">{t('queue.col.submitted')}</span>
         <span className="dl__val">
           {run.submitted === null ? (
-            <Absent title="Speedrun.com did not report a submission time" />
+            <Absent title={t('detail.facts.noSubmitTime')} />
           ) : (
             <>
               {formatDateTime(run.submitted)}{' '}
@@ -770,7 +770,7 @@ function FactsSection({ run }: { run: RunSummary }) {
           )}
         </span>
 
-        <span className="dl__key">Runner</span>
+        <span className="dl__key">{t('queue.col.runner')}</span>
         <span className="dl__val">
           <span className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
             {run.players.length === 0 ? (
@@ -793,11 +793,11 @@ function FactsSection({ run }: { run: RunSummary }) {
                   )}
                   {player.kind === 'guest' && (
                     <Tooltip
-                      label="Guest submission"
-                      detail="This runner has no Speedrun.com account, so there is no history to compare against."
+                      label={t('detail.facts.guest')}
+                      detail={t('detail.facts.guestHint')}
                     >
                       <Badge tone="unknown" small>
-                        guest
+                        {t('detail.facts.guestBadge')}
                       </Badge>
                     </Tooltip>
                   )}
@@ -807,32 +807,32 @@ function FactsSection({ run }: { run: RunSummary }) {
           </span>
         </span>
 
-        <span className="dl__key">Platform</span>
+        <span className="dl__key">{t('detail.facts.platform')}</span>
         <span className="dl__val">
-          <Maybe value={run.platformName} title="No platform was recorded" />
+          <Maybe value={run.platformName} title={t('detail.facts.noPlatform')} />
         </span>
 
-        <span className="dl__key">Region</span>
+        <span className="dl__key">{t('detail.facts.region')}</span>
         <span className="dl__val">
-          <Maybe value={run.regionName} title="No region was recorded" />
+          <Maybe value={run.regionName} title={t('detail.facts.noRegion')} />
         </span>
 
-        <span className="dl__key">Emulator</span>
+        <span className="dl__key">{t('detail.facts.emulator')}</span>
         <span className="dl__val">
           {run.emulated === null ? (
-            <Absent title="Speedrun.com did not say whether an emulator was used" />
+            <Absent title={t('detail.facts.noEmulator')} />
           ) : run.emulated ? (
             <Badge tone="warn" small>
-              Emulated
+              {t('detail.facts.emulated')}
             </Badge>
           ) : (
-            'No'
+            t('common.no')
           )}
         </span>
 
         {subcategories.length > 0 && (
           <>
-            <span className="dl__key">Subcategory</span>
+            <span className="dl__key">{t('detail.facts.subcategory')}</span>
             <span className="dl__val">
               {subcategories
                 .map((value) => value.valueLabel ?? value.valueId)
@@ -845,7 +845,7 @@ function FactsSection({ run }: { run: RunSummary }) {
           <ValueRow key={value.variableId} label={value.variableName} value={value.valueLabel} />
         ))}
 
-        <span className="dl__key">Run id</span>
+        <span className="dl__key">{t('detail.facts.runId')}</span>
         <span className="dl__val mono" data-selectable>
           {run.id}
         </span>
@@ -855,7 +855,7 @@ function FactsSection({ run }: { run: RunSummary }) {
         <div style={{ marginTop: 10 }}>
           <div className="section__title" style={{ marginBottom: 6 }}>
             <Info size={12} />
-            Runner’s comment
+            {t('detail.facts.comment')}
           </div>
           <div className="rules" data-selectable>
             {run.comment}
@@ -866,7 +866,9 @@ function FactsSection({ run }: { run: RunSummary }) {
       {run.rejectionReason && (
         <div className="notice notice--danger" style={{ marginTop: 10 }}>
           <Ban size={15} />
-          <span data-selectable>Previously rejected: {run.rejectionReason}</span>
+          <span data-selectable>
+            {t('detail.facts.previouslyRejected', { reason: run.rejectionReason })}
+          </span>
         </div>
       )}
     </Section>
@@ -875,11 +877,12 @@ function FactsSection({ run }: { run: RunSummary }) {
 
 /** One variable row; a null label means the API gave an id without a name. */
 function ValueRow({ label, value }: { label: string; value: string | null }) {
+  const t = useT();
   return (
     <>
       <span className="dl__key">{label}</span>
       <span className="dl__val">
-        <Maybe value={value} title="Speedrun.com did not label this value" />
+        <Maybe value={value} title={t('detail.facts.unlabelledValue')} />
       </span>
     </>
   );
@@ -894,15 +897,14 @@ function RulesSection({
   game: GameInfo | null;
   category: CategoryInfo | null;
 }) {
+  const t = useT();
+
   if (!game && !category) {
     return (
-      <Section icon={<Gamepad2 size={13} />} title="Rules">
+      <Section icon={<Gamepad2 size={13} />} title={t('detail.rules.title')}>
         <div className="notice notice--unknown">
           <Info size={15} />
-          <span>
-            The game and category could not be loaded, so their rules are not
-            shown. Check them on Speedrun.com before deciding.
-          </span>
+          <span>{t('detail.rules.unavailable')}</span>
         </div>
       </Section>
     );
@@ -911,7 +913,7 @@ function RulesSection({
   return (
     <Section
       icon={<Gamepad2 size={13} />}
-      title="Rules"
+      title={t('detail.rules.title')}
       actions={
         game?.weblink ? (
           <button
@@ -919,7 +921,7 @@ function RulesSection({
             className="btn btn--sm btn--ghost"
             onClick={() => void openExternal(game.weblink)}
           >
-            Game page
+            {t('detail.rules.gamePage')}
             <ExternalLink size={11} />
           </button>
         ) : undefined
@@ -929,27 +931,27 @@ function RulesSection({
         {game && (
           <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
             <RuleFlag
-              label="Video required"
+              label={t('detail.rules.videoRequired')}
               value={game.requireVideo}
-              yes="Videos are required"
-              no="Videos are not required"
+              yes={t('detail.rules.videoYes')}
+              no={t('detail.rules.videoNo')}
             />
             <RuleFlag
-              label="Emulators"
+              label={t('detail.rules.emulators')}
               value={game.emulatorsAllowed}
-              yes="Emulators are allowed"
-              no="Emulators are not allowed"
+              yes={t('detail.rules.emulatorsYes')}
+              no={t('detail.rules.emulatorsNo')}
               invert
             />
             <RuleFlag
-              label="Verification"
+              label={t('detail.rules.verification')}
               value={game.requireVerification}
-              yes="Runs need verification"
-              no="Runs are auto-verified"
+              yes={t('detail.rules.verificationYes')}
+              no={t('detail.rules.verificationNo')}
             />
             {game.releaseDate && (
               <Badge tone="neutral" small>
-                Released {formatDate(game.releaseDate)}
+                {t('detail.rules.released', { date: formatDate(game.releaseDate) })}
               </Badge>
             )}
           </div>
@@ -968,9 +970,7 @@ function RulesSection({
           </div>
         ) : (
           <p className="dim" style={{ fontSize: 'var(--text-xs)', lineHeight: 1.6 }}>
-            {category
-              ? 'This category has no written rules on Speedrun.com.'
-              : 'The category for this run could not be loaded.'}
+            {category ? t('detail.rules.noRules') : t('detail.rules.noCategory')}
           </p>
         )}
       </div>
@@ -997,11 +997,16 @@ function RuleFlag({
   no: string;
   invert?: boolean;
 }) {
+  const t = useT();
+
   if (value === null) {
     return (
-      <Tooltip label={`${label}: not stated`} detail="Speedrun.com did not report this setting.">
+      <Tooltip
+        label={t('detail.rules.flagNotStated', { label })}
+        detail={t('detail.rules.flagNotStatedHint')}
+      >
         <Badge tone="unknown" small>
-          {label}: <span className="absent">—</span>
+          {label}: <span className="absent">{ABSENT}</span>
         </Badge>
       </Tooltip>
     );
@@ -1025,15 +1030,14 @@ function RunnerSection({
   history: RunnerHistorySummary | null;
   currentRunId: string;
 }) {
+  const t = useT();
+
   if (!history) {
     return (
-      <Section icon={<Users size={13} />} title="Runner history">
+      <Section icon={<Users size={13} />} title={t('detail.runner.title')}>
         <div className="notice notice--unknown">
           <Info size={15} />
-          <span>
-            No history is available for this runner. Guests have no account to
-            look up, so this is expected for guest submissions.
-          </span>
+          <span>{t('detail.runner.noHistory')}</span>
         </div>
       </Section>
     );
@@ -1041,12 +1045,14 @@ function RunnerSection({
 
   if (history.error) {
     return (
-      <Section icon={<Users size={13} />} title="Runner history">
+      <Section icon={<Users size={13} />} title={t('detail.runner.title')}>
         <div className="notice notice--unknown">
           <Info size={15} />
           <span data-selectable>
-            {history.displayName}’s history could not be loaded: {history.error}. That
-            is a fetch problem, not something about the runner.
+            {t('detail.runner.loadFailed', {
+              name: history.displayName,
+              error: history.error,
+            })}
           </span>
         </div>
       </Section>
@@ -1059,7 +1065,7 @@ function RunnerSection({
   return (
     <Section
       icon={<Users size={13} />}
-      title="Runner history"
+      title={t('detail.runner.title')}
       actions={
         history.weblink ? (
           <button
@@ -1067,7 +1073,7 @@ function RunnerSection({
             className="btn btn--sm btn--ghost"
             onClick={() => void openExternal(history.weblink)}
           >
-            Profile
+            {t('detail.runner.profile')}
             <ExternalLink size={11} />
           </button>
         ) : undefined
@@ -1075,22 +1081,25 @@ function RunnerSection({
     >
       <div className="col" style={{ gap: 10 }}>
         <div className="dl">
-          <span className="dl__key">Runner</span>
+          <span className="dl__key">{t('queue.col.runner')}</span>
           <span className="dl__val">{history.displayName}</span>
-          <span className="dl__key">On record</span>
+          <span className="dl__key">{t('detail.runner.onRecord')}</span>
           <span className="dl__val">
-            {plural(history.totalRuns, 'run')} — {history.verifiedRuns} verified,{' '}
-            {history.rejectedRuns} rejected
+            {t('detail.runner.recordSummary', {
+              runs: plural(history.totalRuns, 'run'),
+              verified: history.verifiedRuns,
+              rejected: history.rejectedRuns,
+            })}
           </span>
-          <span className="dl__key">Member since</span>
+          <span className="dl__key">{t('detail.runner.memberSince')}</span>
           <span className="dl__val">
             {history.signupDate === null ? <Absent /> : formatDate(history.signupDate)}
           </span>
-          <span className="dl__key">Previous best</span>
+          <span className="dl__key">{t('detail.runner.previousBest')}</span>
           <span className="dl__val num">
             <Maybe
               value={history.previousBestDisplay}
-              title="No earlier run in this category was found"
+              title={t('detail.runner.noPreviousBest')}
             />
           </span>
         </div>
@@ -1100,31 +1109,27 @@ function RunnerSection({
             <Trophy size={15} />
             <span>
               {improvement >= 0
-                ? `${formatPercent(improvement)} faster than their previous best.`
-                : `${formatPercent(Math.abs(improvement))} slower than their previous best.`}{' '}
-              {improvement >= 25 && (
-                <>
-                  A jump this large is worth watching the video for — it is also
-                  exactly what a genuine breakthrough looks like.
-                </>
-              )}
+                ? t('detail.runner.faster', { percent: formatPercent(improvement) })
+                : t('detail.runner.slower', {
+                    percent: formatPercent(Math.abs(improvement)),
+                  })}{' '}
+              {improvement >= 25 && t('detail.runner.bigJump')}
             </span>
           </div>
         )}
 
         {previous.length === 0 ? (
           <p className="dim" style={{ fontSize: 'var(--text-xs)', lineHeight: 1.6 }}>
-            No other runs by this runner were returned. A first submission is not
-            a problem in itself.
+            {t('detail.runner.noOtherRuns')}
           </p>
         ) : (
           <table className="data-table">
             <thead>
               <tr>
-                <th>Category</th>
-                <th style={{ textAlign: 'right' }}>Time</th>
-                <th>Status</th>
-                <th>Submitted</th>
+                <th>{t('queue.col.category')}</th>
+                <th style={{ textAlign: 'right' }}>{t('queue.col.time')}</th>
+                <th>{t('queue.col.status')}</th>
+                <th>{t('queue.col.submitted')}</th>
               </tr>
             </thead>
             <tbody>
@@ -1133,14 +1138,14 @@ function RunnerSection({
                   key={run.id}
                   data-row-action="true"
                   onClick={() => void openExternal(run.weblink)}
-                  title="Open this run on Speedrun.com"
+                  title={t('detail.openRunOnSrc')}
                 >
                   <td>
                     <Maybe value={run.categoryName} />
                     {run.levelName && <span className="dim"> · {run.levelName}</span>}
                   </td>
                   <td style={{ textAlign: 'right' }} className="num">
-                    {run.primaryDisplay ?? '—'}
+                    {run.primaryDisplay ?? <Absent />}
                   </td>
                   <td>
                     <Badge tone={runStatusTone(run.status)} small>
@@ -1169,15 +1174,14 @@ function LeaderboardSection({
   error: string | null;
   currentRunId: string;
 }) {
+  const t = useT();
+
   if (error) {
     return (
-      <Section icon={<Trophy size={13} />} title="Leaderboard">
+      <Section icon={<Trophy size={13} />} title={t('detail.leaderboard.title')}>
         <div className="notice notice--unknown">
           <Info size={15} />
-          <span data-selectable>
-            The leaderboard could not be loaded: {error}. Compare the time on
-            Speedrun.com before deciding.
-          </span>
+          <span data-selectable>{t('detail.leaderboard.loadFailed', { error })}</span>
         </div>
       </Section>
     );
@@ -1185,24 +1189,24 @@ function LeaderboardSection({
 
   if (!entries || entries.length === 0) {
     return (
-      <Section icon={<Trophy size={13} />} title="Leaderboard">
+      <Section icon={<Trophy size={13} />} title={t('detail.leaderboard.title')}>
         <EmptyState
-          title="No leaderboard to compare against"
-          hint="This category has no ranked runs yet, or it does not use a leaderboard."
+          title={t('detail.leaderboard.empty')}
+          hint={t('detail.leaderboard.emptyHint')}
         />
       </Section>
     );
   }
 
   return (
-    <Section icon={<Trophy size={13} />} title="Leaderboard">
+    <Section icon={<Trophy size={13} />} title={t('detail.leaderboard.title')}>
       <table className="data-table">
         <thead>
           <tr>
-            <th style={{ width: 44 }}>#</th>
-            <th>Runner</th>
-            <th style={{ textAlign: 'right' }}>Time</th>
-            <th>Date</th>
+            <th style={{ width: 44 }}>{t('detail.leaderboard.place')}</th>
+            <th>{t('queue.col.runner')}</th>
+            <th style={{ textAlign: 'right' }}>{t('queue.col.time')}</th>
+            <th>{t('detail.leaderboard.date')}</th>
           </tr>
         </thead>
         <tbody>
@@ -1212,7 +1216,7 @@ function LeaderboardSection({
               data-row-action="true"
               data-selected={entry.runId === currentRunId}
               onClick={() => void openExternal(entry.weblink)}
-              title="Open this run on Speedrun.com"
+              title={t('detail.openRunOnSrc')}
             >
               <td className="num">{entry.place}</td>
               <td>{entry.playerLabel}</td>

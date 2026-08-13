@@ -4,17 +4,16 @@
 
 [package]
 name = "srctools"
-version = "1.0.0"
+version = "1.1.0"
 description = "SRCTools — advanced Speedrun.com moderator toolkit"
 authors = ["SRCTools"]
 edition = "2021"
 rust-version = "1.82"
 license = "MIT"
 # The update check reads this and nothing else: `src/update.rs` turns it into
-# `api.github.com/repos/OWNER/NAME/releases/latest`. Replace OWNER with the
-# real account once the repository exists — until then the check reports
-# itself as unconfigured rather than claiming the app is up to date.
-repository = "https://github.com/OWNER/srctools"
+# `api.github.com/repos/Awernox/SRCTools/releases/latest`. Moving the repository
+# means changing this line and nothing else.
+repository = "https://github.com/Awernox/SRCTools"
 default-run = "srctools"
 
 [lib]

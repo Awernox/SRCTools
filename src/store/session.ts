@@ -39,6 +39,8 @@ import { isCheckInterval, type CheckInterval } from '../watcher/intervals';
 
 export type { ThemeName, Density, AccentName };
 
+export type SidebarPosition = 'left' | 'right';
+
 /** Preferences with a UI effect. Stored one JSON value per key. */
 export interface Settings {
   /** Interface language. `null` is never stored — `init` resolves the OS locale. */
@@ -54,6 +56,7 @@ export interface Settings {
   sidebarIcons: boolean;
   /** Show labels in the sidebar. */
   sidebarText: boolean;
+  sidebarPosition: SidebarPosition;
 
   /** Ask before verifying. Rejection and deletion always confirm. */
   confirmVerify: boolean;
@@ -116,9 +119,18 @@ export interface Settings {
   webhookVideoProblems: boolean;
 
   /**
-   * Game ids whose runs get a webhook embed. Empty means "all games": the
-   * filter only ever narrows, so the default sends everything and opting in is
-   * an explicit, visible choice rather than something silently missed.
+   * True while the webhook posts about every moderated game.
+   *
+   * Kept separate from an empty [`webhookGames`] so that each game's switch
+   * means exactly one thing: green posts, gray does not. Without it, "no games
+   * selected" would have to mean *all* games, and a row of gray switches would
+   * read as the opposite of what it does.
+   */
+  webhookAllGames: boolean;
+
+  /**
+   * Game ids whose runs get a webhook embed, used when [`webhookAllGames`] is
+   * off. A game not in this list is a game the moderator switched off.
    */
   webhookGames: string[];
 }
@@ -131,7 +143,8 @@ export const DEFAULT_SETTINGS: Settings = {
   customAccent: DEFAULT_CUSTOM_ACCENT,
   density: 'comfortable',
   sidebarIcons: true,
-  sidebarText: true,
+  sidebarText: false,
+  sidebarPosition: 'left',
 
   confirmVerify: true,
   fastReviewDelay: 0,
@@ -170,8 +183,9 @@ export const DEFAULT_SETTINGS: Settings = {
   webhookRejected: true,
   webhookDeletedVideos: true,
   webhookVideoProblems: true,
-  // Empty: no game filter until one is chosen, so enabling the webhook posts
-  // about everything the event toggles allow rather than silently nothing.
+  // On: an untouched install posts about every game the event toggles allow,
+  // rather than silently nothing. Switching it off reveals the per-game list.
+  webhookAllGames: true,
   webhookGames: [],
 };
 
@@ -187,6 +201,7 @@ const GUARDS: { [K in keyof Settings]?: (value: unknown) => boolean } = {
   theme: isThemeName,
   accent: isAccentName,
   density: isDensity,
+  sidebarPosition: (v) => v === 'left' || v === 'right',
   checkInterval: isCheckInterval,
   customAccent: (v) => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v),
   soundVolume: (v) => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 1,
@@ -311,7 +326,10 @@ export const useSession = create<SessionState>((set, get) => ({
       customAccent: readSetting(settingsRaw, 'customAccent'),
       density: readSetting(settingsRaw, 'density'),
       sidebarIcons: readSetting(settingsRaw, 'sidebarIcons'),
-      sidebarText: readSetting(settingsRaw, 'sidebarText'),
+      // Start narrow every time. The moderator can expand labels for the current
+      // session from either the top bar or this preference.
+      sidebarText: false,
+      sidebarPosition: readSetting(settingsRaw, 'sidebarPosition'),
 
       confirmVerify: readSetting(settingsRaw, 'confirmVerify'),
       fastReviewDelay: readSetting(settingsRaw, 'fastReviewDelay'),
@@ -344,6 +362,7 @@ export const useSession = create<SessionState>((set, get) => ({
       webhookRejected: readSetting(settingsRaw, 'webhookRejected'),
       webhookDeletedVideos: readSetting(settingsRaw, 'webhookDeletedVideos'),
       webhookVideoProblems: readSetting(settingsRaw, 'webhookVideoProblems'),
+      webhookAllGames: readSetting(settingsRaw, 'webhookAllGames'),
       webhookGames: readSetting(settingsRaw, 'webhookGames'),
     };
 

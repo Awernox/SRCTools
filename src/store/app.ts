@@ -19,14 +19,9 @@ export type PageId =
   | 'stats'
   | 'settings';
 
-export const PAGE_TITLES: Record<PageId, string> = {
-  dashboard: 'Dashboard',
-  queue: 'Review queue',
-  games: 'Games',
-  history: 'History',
-  stats: 'Statistics',
-  settings: 'Settings',
-};
+// Page titles are not kept here: the top bar reads them from the `nav.*` keys
+// in the catalogues, so there is one translated name per page rather than a
+// second English-only copy that would silently stay English.
 
 export interface LayoutSizes {
   /** Width of the queue table pane, as a fraction of the split. */

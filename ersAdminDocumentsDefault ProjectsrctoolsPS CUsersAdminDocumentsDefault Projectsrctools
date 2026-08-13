@@ -1,0 +1,55 @@
+warning: in the working copy of 'package.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src-tauri/Cargo.toml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src-tauri/tauri.conf.json', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/package.json b/package.json[m
+[1mindex a90b77e..6dec657 100644[m
+[1m--- a/package.json[m
+[1m+++ b/package.json[m
+[36m@@ -1,7 +1,7 @@[m
+ {[m
+   "name": "srctools",[m
+   "private": true,[m
+[31m-  "version": "1.0.0",[m
+[32m+[m[32m  "version": "1.1.0",[m
+   "description": "SRCTools — advanced Speedrun.com moderator toolkit",[m
+   "type": "module",[m
+   "scripts": {[m
+[1mdiff --git a/src-tauri/Cargo.toml b/src-tauri/Cargo.toml[m
+[1mindex b2615b8..8fb37a7 100644[m
+[1m--- a/src-tauri/Cargo.toml[m
+[1m+++ b/src-tauri/Cargo.toml[m
+[36m@@ -4,17 +4,16 @@[m
+ [m
+ [package][m
+ name = "srctools"[m
+[31m-version = "1.0.0"[m
+[32m+[m[32mversion = "1.1.0"[m
+ description = "SRCTools — advanced Speedrun.com moderator toolkit"[m
+ authors = ["SRCTools"][m
+ edition = "2021"[m
+ rust-version = "1.82"[m
+ license = "MIT"[m
+ # The update check reads this and nothing else: `src/update.rs` turns it into[m
+[31m-# `api.github.com/repos/OWNER/NAME/releases/latest`. Replace OWNER with the[m
+[31m-# real account once the repository exists — until then the check reports[m
+[31m-# itself as unconfigured rather than claiming the app is up to date.[m
+[31m-repository = "https://github.com/OWNER/srctools"[m
+[32m+[m[32m# `api.github.com/repos/Awernox/SRCTools/releases/latest`. Moving the repository[m
+[32m+[m[32m# means changing this line and nothing else.[m
+[32m+[m[32mrepository = "https://github.com/Awernox/SRCTools"[m
+ default-run = "srctools"[m
+ [m
+ [lib][m
+[1mdiff --git a/src-tauri/tauri.conf.json b/src-tauri/tauri.conf.json[m
+[1mindex 80433c7..19a2d17 100644[m
+[1m--- a/src-tauri/tauri.conf.json[m
+[1m+++ b/src-tauri/tauri.conf.json[m
+[36m@@ -2,7 +2,7 @@[m
+   "$schema": "https://schema.tauri.app/config/2",[m
+   "productName": "SRCTools",[m
+   "mainBinaryName": "SRCTools",[m
+[31m-  "version": "1.0.0",[m
+[32m+[m[32m  "version": "1.1.0",[m
+   "identifier": "com.srctools.app",[m
+   "build": {[m
+     "beforeDevCommand": "npm run vite:dev",[m

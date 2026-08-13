@@ -10,6 +10,7 @@ import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
 import { ABSENT, type Tone } from '../format';
+import { useT } from '../i18n';
 import { bindingKeys } from '../shortcuts';
 
 const TONE_CLASS: Record<Tone, string> = {
@@ -66,10 +67,11 @@ export function KeyHint({ binding }: { binding: string }) {
 }
 
 export function Spinner({ size = 'sm', accent = false }: { size?: 'sm' | 'lg'; accent?: boolean }) {
+  const t = useT();
   const classes = ['spinner'];
   if (size === 'lg') classes.push('spinner--lg');
   if (accent) classes.push('spinner--accent');
-  return <span className={classes.join(' ')} role="status" aria-label="Loading" />;
+  return <span className={classes.join(' ')} role="status" aria-label={t('common.loadingAria')} />;
 }
 
 export function Skeleton({
@@ -98,11 +100,14 @@ export function Skeleton({
  * The em dash for data Speedrun.com did not give us.
  *
  * A component rather than a bare string so that "absent" is impossible to
- * confuse with a zero, an empty string or a formatting bug.
+ * confuse with a zero, an empty string or a formatting bug. The default tooltip
+ * is resolved here rather than in a default parameter, because the text has to
+ * follow the interface language and a default value cannot read the catalogue.
  */
-export function Absent({ title = 'Speedrun.com did not provide this' }: { title?: string }) {
+export function Absent({ title }: { title?: string }) {
+  const t = useT();
   return (
-    <span className="absent" title={title} aria-label="Not provided">
+    <span className="absent" title={title ?? t('detail.absent')} aria-label={t('detail.notProvided')}>
       {ABSENT}
     </span>
   );
@@ -206,7 +211,7 @@ export function EmptyState({
  * trouble rather than anything the moderator did.
  */
 export function ErrorState({
-  title = 'Could not load this',
+  title,
   message,
   onRetry,
 }: {
@@ -214,17 +219,18 @@ export function ErrorState({
   message: string;
   onRetry?: () => void;
 }) {
+  const t = useT();
   return (
     <div className="empty">
       <div className="empty__title" style={{ color: 'var(--danger-text)' }}>
-        {title}
+        {title ?? t('common.loadFailed')}
       </div>
       <div className="empty__hint" data-selectable>
         {message}
       </div>
       {onRetry && (
         <button type="button" className="btn" onClick={onRetry} style={{ marginTop: 8 }}>
-          Try again
+          {t('common.retry')}
         </button>
       )}
     </div>
@@ -369,6 +375,48 @@ export function Checkbox({
           )}
         </span>
       )}
+    </label>
+  );
+}
+
+/* ---------------------------------------------------------------- switch */
+
+/**
+ * An on/off switch, for settings where the two states are "this happens" and
+ * "this does not happen".
+ *
+ * Same semantics as [`Checkbox`] — it is a checkbox underneath, so it keeps the
+ * native focus, keyboard and screen-reader behaviour — but it reads at a glance
+ * from across a list: green and to the right means on. Use it where a row of
+ * them is scanned rather than read, and the checkbox where the choice sits on
+ * its own next to a label.
+ */
+export function Switch({
+  checked,
+  onChange,
+  disabled,
+  label,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  disabled?: boolean;
+  /** Accessible name, for a switch with no visible label beside it. */
+  label?: string;
+}) {
+  return (
+    <label className="switch" data-disabled={disabled === true ? 'true' : undefined}>
+      <input
+        type="checkbox"
+        role="switch"
+        className="switch__input"
+        checked={checked}
+        disabled={disabled}
+        aria-label={label}
+        onChange={(event) => onChange(event.currentTarget.checked)}
+      />
+      <span className="switch__track" aria-hidden="true">
+        <span className="switch__thumb" />
+      </span>
     </label>
   );
 }
@@ -552,6 +600,7 @@ export function Modal({
   width?: number;
   children: ReactNode;
 }) {
+  const t = useT();
   const box = useRef<HTMLDivElement | null>(null);
 
   useLayoutEffect(() => {
@@ -580,7 +629,7 @@ export function Modal({
       >
         <header className="modal__header">
           <h2 className="modal__title">{title}</h2>
-          <button type="button" className="btn btn--ghost btn--icon btn--sm" onClick={onClose} aria-label="Close">
+          <button type="button" className="btn btn--ghost btn--icon btn--sm" onClick={onClose} aria-label={t('common.close')}>
             ✕
           </button>
         </header>

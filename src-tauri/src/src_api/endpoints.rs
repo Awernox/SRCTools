@@ -41,7 +41,7 @@ impl RunStatusFilter {
 }
 
 /// Sort key accepted by `GET /runs`.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RunOrder {
     Submitted,
     Date,

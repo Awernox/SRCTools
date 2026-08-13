@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 
 import {
+  Absent,
   Badge,
   Card,
   EmptyState,
@@ -45,6 +46,7 @@ import {
   plural,
   type Tone,
 } from '../format';
+import { useT, type Translate, type TranslationKey } from '../i18n';
 import { errorText, records } from '../ipc';
 import { copyToClipboard, openExternal, saveExport } from '../open';
 import { useApp } from '../store/app';
@@ -66,24 +68,23 @@ type OutcomeFilter = 'all' | ActionOutcome;
 type HistoryTab = 'actions' | 'batches';
 
 export function History() {
+  const t = useT();
   const [tab, setTab] = useState<HistoryTab>('actions');
 
   return (
     <div className="page">
       <div className="page__header">
         <div className="page__heading">
-          <h2 className="h1">History</h2>
-          <p className="page__subtitle">
-            Everything SRCTools has done from this machine, kept locally.
-          </p>
+          <h2 className="h1">{t('history.title')}</h2>
+          <p className="page__subtitle">{t('history.subtitle')}</p>
         </div>
         <div className="page__actions">
           <Tabs
             value={tab}
             onChange={setTab}
             tabs={[
-              { value: 'actions', label: 'Actions' },
-              { value: 'batches', label: 'Bulk operations' },
+              { value: 'actions', label: t('history.tab.actions') },
+              { value: 'batches', label: t('history.tab.batches') },
             ]}
           />
         </div>
@@ -97,6 +98,7 @@ export function History() {
 /* ------------------------------------------------------------- action log */
 
 function ActionLog() {
+  const t = useT();
   const openDetail = useApp((state) => state.openDetail);
   const go = useApp((state) => state.go);
 
@@ -199,7 +201,7 @@ function ActionLog() {
       setRows((current) => [...current, ...page]);
       setMore(page.length === PAGE);
     } catch (err) {
-      ui.error('Could not load more history', err);
+      ui.error(t('history.loadMoreFailed'), err);
     } finally {
       setAppending(false);
     }
@@ -212,12 +214,12 @@ function ActionLog() {
       // moderator is looking at.
       const payload = await records.exportHistory(format, query);
       if (payload.rowCount === 0) {
-        ui.warning('Nothing to export', 'No history entries match the current filters.');
+        ui.warning(t('history.nothingToExport'), t('history.nothingToExportHint'));
         return;
       }
       await saveExport(payload);
     } catch (err) {
-      ui.error('Could not build the export', err);
+      ui.error(t('queue.exportFailed'), err);
     } finally {
       setExporting(null);
     }
@@ -225,21 +227,23 @@ function ActionLog() {
 
   const clearAll = async () => {
     const confirmed = await ui.confirm({
-      title: 'Clear the local history?',
-      message:
-        'This erases SRCTools’ own record of what you have done on this machine, including the bulk operation log. It changes nothing on Speedrun.com: runs you verified stay verified, and runs you rejected stay rejected.',
+      title: t('history.clearTitle'),
+      message: t('history.clearMessage'),
       danger: true,
-      confirmLabel: 'Clear history',
-      acknowledge: 'I understand this cannot be undone',
+      confirmLabel: t('history.clearConfirm'),
+      acknowledge: t('history.clearAcknowledge'),
     });
     if (!confirmed) return;
 
     try {
       const removed = await records.clearHistory(true);
-      ui.success('History cleared', `${plural(removed, 'entry')} removed from this machine.`);
+      ui.success(
+        t('history.cleared'),
+        t('history.clearedHint', { entries: plural(removed, 'entry') }),
+      );
       setReload((n) => n + 1);
     } catch (err) {
-      ui.error('Could not clear the history', err);
+      ui.error(t('history.clearFailed'), err);
     }
   };
 
@@ -259,7 +263,7 @@ function ActionLog() {
           <input
             className="input"
             style={{ flex: 1, minWidth: 0 }}
-            placeholder="Search game, category, runner, reason or run id"
+            placeholder={t('history.searchPlaceholder')}
             value={search}
             onChange={(event) => setSearch(event.currentTarget.value)}
           />
@@ -271,10 +275,10 @@ function ActionLog() {
           value={action}
           onChange={setAction}
           options={[
-            { value: 'all', label: 'All' },
-            { value: 'verify', label: 'Verified' },
-            { value: 'reject', label: 'Rejected' },
-            { value: 'delete', label: 'Deleted' },
+            { value: 'all', label: t('common.all') },
+            { value: 'verify', label: t('history.action.verify') },
+            { value: 'reject', label: t('history.action.reject') },
+            { value: 'delete', label: t('history.action.delete') },
           ]}
         />
 
@@ -282,16 +286,16 @@ function ActionLog() {
           value={outcome}
           onChange={setOutcome}
           options={[
-            { value: 'all', label: 'Any result' },
-            { value: 'success', label: 'Succeeded' },
-            { value: 'failed', label: 'Failed' },
+            { value: 'all', label: t('history.outcome.any') },
+            { value: 'success', label: t('history.outcome.success') },
+            { value: 'failed', label: t('history.outcome.failed') },
           ]}
         />
       </div>
 
       <div className="toolbar">
         <div className="toolbar__group">
-          <span className="label">From</span>
+          <span className="label">{t('history.from')}</span>
           <input
             className="input"
             type="date"
@@ -301,7 +305,7 @@ function ActionLog() {
           />
         </div>
         <div className="toolbar__group">
-          <span className="label">To</span>
+          <span className="label">{t('history.to')}</span>
           <input
             className="input"
             type="date"
@@ -314,7 +318,7 @@ function ActionLog() {
         {filtered && (
           <button type="button" className="btn btn--sm btn--ghost" onClick={resetFilters}>
             <Funnel size={13} />
-            Clear filters
+            {t('queue.clearFilters')}
           </button>
         )}
 
@@ -327,7 +331,7 @@ function ActionLog() {
           disabled={loading}
         >
           {loading ? <Spinner /> : <RefreshCw size={13} />}
-          Refresh
+          {t('common.refresh')}
         </button>
         <button
           type="button"
@@ -349,17 +353,13 @@ function ActionLog() {
         </button>
         <button type="button" className="btn btn--sm btn--danger" onClick={() => void clearAll()}>
           <Trash2 size={13} />
-          Clear…
+          {t('history.clear')}
         </button>
       </div>
 
       <div className="notice notice--info" style={{ marginBottom: 12 }}>
         <Info size={15} />
-        <span>
-          This is SRCTools' own log, written when an action succeeds or fails here. Moderation done
-          in a browser or on another machine is not part of it, and Speedrun.com does not publish a
-          history that could be imported.
-        </span>
+        <span>{t('history.notice')}</span>
       </div>
 
       {error !== null && <ErrorState message={error} onRetry={() => setReload((n) => n + 1)} />}
@@ -375,16 +375,12 @@ function ActionLog() {
       {error === null && !loading && rows.length === 0 && (
         <EmptyState
           icon={<ClipboardList size={26} />}
-          title={filtered ? 'Nothing matches those filters' : 'No actions recorded yet'}
-          hint={
-            filtered
-              ? 'Widen the date range or clear the filters to see the rest of the log.'
-              : 'Verify or reject a run and it will be written here, along with the reason you gave.'
-          }
+          title={filtered ? t('history.noMatch') : t('history.empty')}
+          hint={filtered ? t('history.noMatchHint') : t('history.emptyHint')}
           action={
             filtered ? (
               <button type="button" className="btn" onClick={resetFilters}>
-                Clear filters
+                {t('queue.clearFilters')}
               </button>
             ) : undefined
           }
@@ -402,25 +398,21 @@ function ActionLog() {
               marginBottom: 6,
             }}
           >
-            <span>
-              Showing {formatNumber(rows.length)}
-              {total !== null && !filtered ? ` of ${formatNumber(total)}` : ''}
-              {filtered && total !== null ? ` matching (${formatNumber(total)} recorded)` : ''}
-            </span>
-            {more && <span>Older entries are further down.</span>}
+            <span>{countLabel(rows.length, total, filtered, t)}</span>
+            {more && <span>{t('history.olderBelow')}</span>}
           </div>
 
           <table className="data-table">
             <thead>
               <tr>
-                <th>When</th>
-                <th>Action</th>
-                <th>Game</th>
-                <th>Category</th>
-                <th>Runner</th>
-                <th style={{ textAlign: 'right' }}>Time</th>
-                <th>Reason / result</th>
-                <th aria-label="Actions" />
+                <th>{t('history.col.when')}</th>
+                <th>{t('history.col.action')}</th>
+                <th>{t('queue.col.game')}</th>
+                <th>{t('queue.col.category')}</th>
+                <th>{t('queue.col.runner')}</th>
+                <th style={{ textAlign: 'right' }}>{t('queue.col.time')}</th>
+                <th>{t('history.col.reason')}</th>
+                <th aria-label={t('history.tab.actions')} />
               </tr>
             </thead>
             <tbody>
@@ -439,7 +431,7 @@ function ActionLog() {
                 disabled={appending}
               >
                 {appending ? <Spinner /> : null}
-                Load {PAGE} more
+                {t('history.loadMore', { count: PAGE })}
               </button>
             </div>
           )}
@@ -449,14 +441,45 @@ function ActionLog() {
   );
 }
 
-const ACTION_COPY: Record<ModerationActionName, { label: string; tone: Tone }> = {
-  verify: { label: 'Verified', tone: 'ok' },
-  reject: { label: 'Rejected', tone: 'danger' },
-  delete: { label: 'Deleted', tone: 'warn' },
+const ACTION_COPY: Record<ModerationActionName, { labelKey: TranslationKey; tone: Tone }> = {
+  verify: { labelKey: 'history.action.verify', tone: 'ok' },
+  reject: { labelKey: 'history.action.reject', tone: 'danger' },
+  delete: { labelKey: 'history.action.delete', tone: 'warn' },
+};
+
+/**
+ * "Showing 12 of 3,400", in one of its three shapes.
+ *
+ * Assembled as whole sentences rather than a stem plus suffixes, because the
+ * numbers do not sit in the same order in every language.
+ */
+function countLabel(shown: number, total: number | null, filtered: boolean, t: Translate): string {
+  const shownText = formatNumber(shown);
+  if (total === null) return t('history.showing', { shown: shownText });
+  if (filtered) {
+    return t('history.showingMatching', { shown: shownText, total: formatNumber(total) });
+  }
+  return t('history.showingOf', { shown: shownText, total: formatNumber(total) });
+}
+
+/**
+ * Label for an audited operation.
+ *
+ * The backend writes machine names (`bulk_verify`, `delete_run`). Anything not
+ * listed is shown as its identifier rather than guessed at, so an operation
+ * added later reads as unfamiliar instead of as the wrong action.
+ */
+const OPERATION_KEYS: Record<string, TranslationKey> = {
+  bulk_verify: 'history.op.bulkVerify',
+  bulk_reject: 'history.op.bulkReject',
+  bulk_delete: 'history.op.bulkDelete',
+  delete_run: 'history.op.deleteRun',
 };
 
 function HistoryRow({ entry, onInspect }: { entry: HistoryEntry; onInspect: () => void }) {
+  const t = useT();
   const copy = ACTION_COPY[entry.action];
+  const label = t(copy.labelKey);
   const failed = entry.outcome === 'failed';
 
   return (
@@ -471,13 +494,13 @@ function HistoryRow({ entry, onInspect }: { entry: HistoryEntry; onInspect: () =
           {/* A failed attempt is not the action having happened, so the tone
               never says "verified" in green when Speedrun.com refused it. */}
           <Badge tone={failed ? 'unknown' : copy.tone} small>
-            {failed ? `${copy.label} — failed` : copy.label}
+            {failed ? t('history.actionFailed', { action: label }) : label}
           </Badge>
         </span>
       </td>
-      <td className="truncate">{entry.gameName ?? <span className="absent">—</span>}</td>
-      <td className="truncate">{entry.categoryName ?? <span className="absent">—</span>}</td>
-      <td className="truncate">{entry.playerNames ?? <span className="absent">—</span>}</td>
+      <td className="truncate">{entry.gameName ?? <Absent />}</td>
+      <td className="truncate">{entry.categoryName ?? <Absent />}</td>
+      <td className="truncate">{entry.playerNames ?? <Absent />}</td>
       <td style={{ textAlign: 'right' }} className="num">
         {formatDuration(entry.runTime)}
       </td>
@@ -485,16 +508,16 @@ function HistoryRow({ entry, onInspect }: { entry: HistoryEntry; onInspect: () =
         {failed ? (
           <span className="row" style={{ gap: 6, color: 'var(--danger-text)' }}>
             <TriangleAlert size={12} />
-            <span data-selectable>{entry.errorMessage ?? 'The request failed.'}</span>
+            <span data-selectable>{entry.errorMessage ?? t('history.requestFailed')}</span>
           </span>
         ) : entry.reason !== null && entry.reason.trim() !== '' ? (
           <span data-selectable>{entry.reason}</span>
         ) : (
-          <span className="dim">No reason recorded</span>
+          <span className="dim">{t('history.noReason')}</span>
         )}
         {entry.batchId !== null && (
           <span className="dim" style={{ display: 'block', fontSize: 'var(--text-xs)' }}>
-            part of a bulk operation
+            {t('history.partOfBatch')}
           </span>
         )}
       </td>
@@ -503,17 +526,17 @@ function HistoryRow({ entry, onInspect }: { entry: HistoryEntry; onInspect: () =
           type="button"
           className="btn btn--sm btn--ghost btn--icon"
           onClick={onInspect}
-          title="Inspect this run"
-          aria-label="Inspect this run"
+          title={t('history.inspect')}
+          aria-label={t('history.inspect')}
         >
           <Search size={12} />
         </button>
         <button
           type="button"
           className="btn btn--sm btn--ghost btn--icon"
-          onClick={() => void copyToClipboard(entry.runId, 'Run id copied')}
-          title={`Copy run id ${entry.runId}`}
-          aria-label="Copy run id"
+          onClick={() => void copyToClipboard(entry.runId, t('queue.row.idCopied'))}
+          title={t('history.copyRunIdTitle', { id: entry.runId })}
+          aria-label={t('queue.row.copyId')}
         >
           <Copy size={12} />
         </button>
@@ -522,8 +545,8 @@ function HistoryRow({ entry, onInspect }: { entry: HistoryEntry; onInspect: () =
           className="btn btn--sm btn--ghost btn--icon"
           onClick={() => void openExternal(entry.runWeblink)}
           disabled={entry.runWeblink === null}
-          title="Open on Speedrun.com"
-          aria-label="Open on Speedrun.com"
+          title={t('action.openOnSrc')}
+          aria-label={t('action.openOnSrc')}
         >
           <ExternalLink size={12} />
         </button>
@@ -542,6 +565,7 @@ function HistoryRow({ entry, onInspect }: { entry: HistoryEntry; onInspect: () =
  * action leaves a trace even after the toast has gone.
  */
 function BatchLog() {
+  const t = useT();
   const [entries, setEntries] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -574,7 +598,11 @@ function BatchLog() {
     <>
       <div className="toolbar">
         <span className="label">
-          {loading ? 'Loading…' : `${plural(entries.length, 'operation')} recorded`}
+          {loading
+            ? t('common.loading')
+            : t('history.batchesRecorded', {
+                operations: plural(entries.length, 'operation'),
+              })}
         </span>
         <div className="toolbar__spacer" />
         <button
@@ -584,7 +612,7 @@ function BatchLog() {
           disabled={loading}
         >
           {loading ? <Spinner /> : <RefreshCw size={13} />}
-          Refresh
+          {t('common.refresh')}
         </button>
       </div>
 
@@ -601,8 +629,8 @@ function BatchLog() {
       {error === null && !loading && entries.length === 0 && (
         <EmptyState
           icon={<Layers size={26} />}
-          title="No bulk operations yet"
-          hint="Selecting several runs and acting on them at once records the batch here, with how many succeeded and how many failed."
+          title={t('history.noBatches')}
+          hint={t('history.noBatchesHint')}
         />
       )}
 
@@ -618,26 +646,31 @@ function BatchLog() {
 }
 
 function BatchCard({ entry }: { entry: AuditEntry }) {
+  const t = useT();
   const partial = entry.failed > 0 && entry.succeeded > 0;
   const tone: Tone = entry.failed === 0 ? 'ok' : partial ? 'warn' : 'danger';
+  const operationKey = OPERATION_KEYS[entry.operation];
 
   return (
     <Card
       title={
         <span className="row" style={{ gap: 8 }}>
-          <span>{entry.operation}</span>
+          <span>{operationKey === undefined ? entry.operation : t(operationKey)}</span>
           <Badge tone={tone} small dot>
             {entry.failed === 0
-              ? 'All succeeded'
+              ? t('history.batch.allSucceeded')
               : partial
-                ? 'Partly failed'
-                : 'Failed'}
+                ? t('history.batch.partlyFailed')
+                : t('history.batch.failed')}
           </Badge>
         </span>
       }
       icon={<Layers size={13} />}
       actions={
-        <Tooltip label={formatDateTime(entry.startedAt)} detail={`Finished ${formatDateTime(entry.finishedAt)}`}>
+        <Tooltip
+          label={formatDateTime(entry.startedAt)}
+          detail={t('history.batch.finished', { when: formatDateTime(entry.finishedAt) })}
+        >
           <span className="dim" style={{ fontSize: 'var(--text-xs)' }}>
             {formatRelative(entry.startedAt)}
           </span>
@@ -645,9 +678,13 @@ function BatchCard({ entry }: { entry: AuditEntry }) {
       }
     >
       <div className="row" style={{ gap: 18, flexWrap: 'wrap' }}>
-        <BatchFigure label="Attempted" value={entry.total} />
-        <BatchFigure label="Succeeded" value={entry.succeeded} tone="ok" />
-        <BatchFigure label="Failed" value={entry.failed} tone={entry.failed > 0 ? 'danger' : undefined} />
+        <BatchFigure label={t('history.batch.attempted')} value={entry.total} />
+        <BatchFigure label={t('history.outcome.success')} value={entry.succeeded} tone="ok" />
+        <BatchFigure
+          label={t('history.batch.failed')}
+          value={entry.failed}
+          tone={entry.failed > 0 ? 'danger' : undefined}
+        />
       </div>
 
       {entry.detail !== null && entry.detail.trim() !== '' && (
@@ -661,7 +698,7 @@ function BatchCard({ entry }: { entry: AuditEntry }) {
       )}
 
       <div className="dim" style={{ fontSize: 'var(--text-xs)', marginTop: 8 }}>
-        Batch {entry.batchId}
+        {t('history.batch.id', { id: entry.batchId })}
       </div>
     </Card>
   );

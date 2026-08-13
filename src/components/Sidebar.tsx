@@ -59,7 +59,7 @@ export function Sidebar() {
   const icons = showIcons || !labels;
 
   return (
-    <nav className="sidebar" aria-label="Main" data-labels={labels}>
+    <nav className="sidebar" aria-label={t('nav.landmark')} data-labels={labels}>
       <div className="sidebar__scroll">
         <div className="sidebar__section">
           {NAV.map((item) => {

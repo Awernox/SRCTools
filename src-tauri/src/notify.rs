@@ -36,25 +36,6 @@ fn focus_main(app: &AppHandle) {
     }
 }
 
-/// True when running from `target/debug` or `target/release`.
-///
-/// A toast's app id must be a registered AppUserModelID or Windows silently
-/// drops it. The installed build registers one through its Start Menu shortcut;
-/// a `cargo run` build has not, so it borrows PowerShell's, exactly as
-/// `tauri-plugin-notification` does.
-#[cfg(windows)]
-fn is_dev_layout() -> bool {
-    use std::path::MAIN_SEPARATOR as SEP;
-    let Ok(exe) = tauri::utils::platform::current_exe() else {
-        return true;
-    };
-    let Some(dir) = exe.parent() else {
-        return true;
-    };
-    let dir = dir.display().to_string();
-    dir.ends_with(&format!("{SEP}target{SEP}debug")) || dir.ends_with(&format!("{SEP}target{SEP}release"))
-}
-
 #[cfg(windows)]
 fn show_windows(
     app: &AppHandle,
@@ -64,11 +45,11 @@ fn show_windows(
 ) -> Result<(), String> {
     use tauri_winrt_notification::{Duration, Sound, Toast};
 
-    let app_id = if is_dev_layout() {
-        Toast::POWERSHELL_APP_ID.to_string()
-    } else {
-        app.config().identifier.clone()
-    };
+    // Always use the app's own AppUserModelID so the toast shows the SRCTools
+    // name and icon. The installed build registers it through its Start Menu
+    // shortcut; a `cargo run` build may not show a toast at all, which is
+    // preferable to silently borrowing PowerShell's identity.
+    let app_id = app.config().identifier.clone();
 
     let handle = app.clone();
     let toast = Toast::new(&app_id)

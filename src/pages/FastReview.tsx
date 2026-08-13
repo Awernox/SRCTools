@@ -44,6 +44,7 @@ import {
   Tooltip,
 } from '../components/ui';
 import { useShortcuts } from '../hooks/useShortcuts';
+import { useT, type Translate, type TranslationKey } from '../i18n';
 import {
   confidenceLabel,
   formatNumber,
@@ -68,6 +69,7 @@ import type { RunDetail, RunSummary } from '../types';
 type Outcome = 'verified' | 'rejected';
 
 export function FastReview() {
+  const t = useT();
   const runs = useQueue((state) => state.visible());
   const focusIndex = useQueue((state) => state.focusIndex);
   const focus = useQueue((state) => state.focus);
@@ -152,7 +154,7 @@ export function FastReview() {
     if (!current) return;
     const next = move(1);
     if (!next || next.id === current.id) {
-      ui.info('That was the last run', 'Nothing further in this filtered queue.');
+      ui.info(t('fast.lastRun'), t('fast.lastRunHint'));
     }
   };
 
@@ -166,7 +168,7 @@ export function FastReview() {
       if (!run) return;
       const first = run.videoUrls[0];
       if (first) void openExternal(first);
-      else ui.warning('This run has no video link', 'Nothing was submitted to open.');
+      else ui.warning(t('fast.noVideoLink'), t('fast.noVideoLinkHint'));
     },
     openRun: () => {
       const run = held?.run ?? current;
@@ -192,8 +194,11 @@ export function FastReview() {
         <Zap size={14} style={{ color: 'var(--accent-text)' }} />
         <span className="fast__progress">
           {remaining === 0
-            ? `${plural(handled, 'run')} handled`
-            : `Run ${formatNumber(index + 1)} of ${formatNumber(remaining)}`}
+            ? t('fast.handled', { runs: plural(handled, 'run') })
+            : t('fast.position', {
+                index: formatNumber(index + 1),
+                total: formatNumber(remaining),
+              })}
         </span>
 
         <div style={{ width: 160 }}>
@@ -201,7 +206,9 @@ export function FastReview() {
         </div>
 
         <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)' }}>
-          {handled === 0 ? 'Nothing decided yet' : `${plural(handled, 'decision')} this session`}
+          {handled === 0
+            ? t('fast.nothingDecided')
+            : t('fast.decisionsThisSession', { decisions: plural(handled, 'decision') })}
         </span>
 
         <div className="toolbar__spacer" />
@@ -210,20 +217,20 @@ export function FastReview() {
           className="row"
           style={{ gap: 12, fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)' }}
         >
-          <HintPair action="approve" label="verify" />
-          <HintPair action="reject" label="reject" />
-          <HintPair action="next" label="skip" />
-          <HintPair action="openVideo" label="video" />
+          <HintPair action="approve" labelKey="fast.hint.verify" />
+          <HintPair action="reject" labelKey="fast.hint.reject" />
+          <HintPair action="next" labelKey="fast.hint.skip" />
+          <HintPair action="openVideo" labelKey="fast.hint.video" />
         </span>
 
         <button
           type="button"
           className="btn btn--sm"
           onClick={exit}
-          title="Leave Fast Review (Esc)"
+          title={t('fast.exit')}
         >
           <X size={13} />
-          Exit
+          {t('fast.exitShort')}
         </button>
       </div>
 
@@ -239,15 +246,15 @@ export function FastReview() {
           <div className="fast__card">
             <EmptyState
               icon={<Check size={26} />}
-              title={handled > 0 ? 'Queue cleared' : 'Nothing to review'}
+              title={handled > 0 ? t('fast.done') : t('fast.nothingToReview')}
               hint={
                 handled > 0
-                  ? `${plural(handled, 'run')} handled in this session. Refresh the queue to pull in anything submitted since.`
-                  : 'No runs match the filters you left the queue on.'
+                  ? t('fast.doneHint', { runs: plural(handled, 'run') })
+                  : t('fast.nothingToReviewHint')
               }
               action={
                 <button type="button" className="btn btn--primary" onClick={exit}>
-                  Back to the queue
+                  {t('fast.backToQueue')}
                 </button>
               }
             />
@@ -272,7 +279,7 @@ export function FastReview() {
                 disabled={busy}
               >
                 <Check size={14} />
-                Verify
+                {t('action.verify')}
                 <HintKey action="approve" />
               </button>
 
@@ -283,13 +290,13 @@ export function FastReview() {
                 disabled={busy}
               >
                 <Ban size={14} />
-                Reject…
+                {t('detail.reject')}
                 <HintKey action="reject" />
               </button>
 
               <button type="button" className="btn" onClick={skipCurrent}>
                 <SkipForward size={14} />
-                Skip
+                {t('action.skip')}
                 <HintKey action="next" />
               </button>
 
@@ -300,8 +307,8 @@ export function FastReview() {
                 className="btn btn--ghost btn--icon"
                 onClick={() => move(-1)}
                 disabled={index === 0}
-                title="Previous run"
-                aria-label="Previous run"
+                title={t('action.prevRun')}
+                aria-label={t('action.prevRun')}
               >
                 <ChevronLeft size={14} />
               </button>
@@ -310,8 +317,8 @@ export function FastReview() {
                 className="btn btn--ghost btn--icon"
                 onClick={() => move(1)}
                 disabled={index >= runs.length - 1}
-                title="Next run"
-                aria-label="Next run"
+                title={t('action.nextRun')}
+                aria-label={t('action.nextRun')}
               >
                 <ChevronRight size={14} />
               </button>
@@ -343,16 +350,17 @@ export function FastReview() {
 /** The shortcut hints along the top bar, which follow any rebinding. */
 function HintPair({
   action,
-  label,
+  labelKey,
 }: {
   action: 'approve' | 'reject' | 'next' | 'openVideo';
-  label: string;
+  labelKey: TranslationKey;
 }) {
+  const t = useT();
   const binding = useSession((state) => state.binding(action));
   return (
     <span className="row" style={{ gap: 4 }}>
       <KeyHint binding={binding} />
-      {label}
+      {t(labelKey)}
     </span>
   );
 }
@@ -376,6 +384,7 @@ function ReviewCard({
   loading: boolean;
   error: string | null;
 }) {
+  const t = useT();
   const analysis = detail?.analysis ?? null;
   const checks = detail?.videoChecks ?? [];
   const category = detail?.category ?? null;
@@ -384,7 +393,7 @@ function ReviewCard({
     <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
       <div>
         <div className="h1" style={{ fontSize: 'var(--text-xl)' }}>
-          {run.gameName ?? <Absent title="Speedrun.com did not name the game" />}
+          {run.gameName ?? <Absent title={t('detail.noGameName')} />}
         </div>
         <div className="detail__meta">
           <span>{run.categoryName ?? <Absent />}</span>
@@ -398,13 +407,13 @@ function ReviewCard({
             </>
           )}
           <span className="dim">·</span>
-          <span>submitted {formatRelative(run.submitted)}</span>
+          <span>{t('fast.submitted', { when: formatRelative(run.submitted) })}</span>
           <button
             type="button"
             className="btn btn--sm btn--ghost"
             onClick={() => void openExternal(run.weblink)}
           >
-            Open on Speedrun.com
+            {t('action.openOnSrc')}
             <ExternalLink size={11} />
           </button>
         </div>
@@ -421,7 +430,7 @@ function ReviewCard({
       <section>
         <div className="section__title">
           <Video size={13} />
-          Video
+          {t('detail.video.title')}
         </div>
 
         {run.videoUrls.length === 0 ? (
@@ -429,8 +438,8 @@ function ReviewCard({
             <VideoOff size={15} />
             <span>
               {run.videoText !== null
-                ? `No usable link was submitted. The runner wrote: “${run.videoText}”.`
-                : 'No video was submitted. Whether that matters depends on this game’s rules.'}
+                ? t('detail.video.noLinkWithText', { text: run.videoText })
+                : t('detail.video.noLink')}
             </span>
           </div>
         ) : loading && checks.length === 0 ? (
@@ -451,7 +460,7 @@ function ReviewCard({
                       </Tooltip>
                     ) : (
                       <Badge tone="unknown" small>
-                        Not checked
+                        {t('fast.notChecked')}
                       </Badge>
                     )}
                     <span className="video-item__url" title={url}>
@@ -463,7 +472,7 @@ function ReviewCard({
                       onClick={() => void openExternal(url)}
                     >
                       <Play size={12} />
-                      Watch
+                      {t('fast.watch')}
                     </button>
                   </div>
                   {check && <div className="video-item__detail">{check.detail}</div>}
@@ -478,16 +487,13 @@ function ReviewCard({
       <section>
         <div className="section__title">
           <Sparkles size={13} />
-          Automated checks
+          {t('detail.analysis.title')}
         </div>
 
         {error !== null ? (
           <div className="notice notice--unknown">
             <Info size={15} />
-            <span>
-              The checks could not be loaded ({error}). That says nothing about this run — review
-              it on Speedrun.com before deciding.
-            </span>
+            <span>{t('fast.checksFailed', { error })}</span>
           </div>
         ) : !analysis ? (
           <Skeleton height={44} radius={8} />
@@ -501,7 +507,7 @@ function ReviewCard({
         <section>
           <div className="section__title">
             <ListChecks size={13} />
-            {category.name} rules
+            {t('fast.categoryRules', { category: category.name })}
           </div>
           <div className="rules" data-selectable>
             {category.rules}
@@ -551,10 +557,35 @@ function AnalysisBlock({ analysis }: { analysis: NonNullable<RunDetail['analysis
 
 /* ------------------------------------------------------------------- held */
 
-const OUTCOME_COPY: Record<Outcome, { title: string; icon: ReactNode }> = {
-  verified: { title: 'Verified', icon: <Check size={26} /> },
-  rejected: { title: 'Rejected', icon: <Ban size={26} /> },
+const OUTCOME_COPY: Record<Outcome, { titleKey: TranslationKey; icon: ReactNode }> = {
+  verified: { titleKey: 'runStatus.verified', icon: <Check size={26} /> },
+  rejected: { titleKey: 'runStatus.rejected', icon: <Ban size={26} /> },
 };
+
+/**
+ * "Verified — Half-Life", and the line under it.
+ *
+ * Assembled through the catalogue rather than by concatenation so that the
+ * outcome, the game and the countdown can be reordered by a translation.
+ */
+function heldCopy(
+  run: RunSummary,
+  outcome: Outcome,
+  seconds: number,
+  t: Translate,
+): { title: string; hint: string } {
+  return {
+    title: t('fast.heldTitle', {
+      outcome: t(OUTCOME_COPY[outcome].titleKey),
+      game: run.gameName ?? t('common.unknownGame'),
+    }),
+    hint: t('fast.heldHint', {
+      category: run.categoryName ?? t('common.unknownCategory'),
+      runner: run.playerLabel,
+      seconds: plural(seconds, 'second'),
+    }),
+  };
+}
 
 /** The pause between one decision and the next run appearing. */
 function HeldCard({
@@ -568,25 +599,23 @@ function HeldCard({
   seconds: number;
   onContinue: () => void;
 }) {
-  const copy = OUTCOME_COPY[outcome];
+  const t = useT();
+  const copy = heldCopy(run, outcome, seconds, t);
   return (
     <div className="fast__card">
       <EmptyState
-        icon={copy.icon}
-        title={`${copy.title} — ${run.gameName ?? 'unknown game'}`}
-        hint={`${run.categoryName ?? 'Unknown category'} by ${run.playerLabel}. Next run in ${plural(
-          seconds,
-          'second',
-        )}.`}
+        icon={OUTCOME_COPY[outcome].icon}
+        title={copy.title}
+        hint={copy.hint}
         action={
           <div className="row" style={{ gap: 8 }}>
             <button type="button" className="btn btn--primary" onClick={onContinue}>
               <SkipForward size={13} />
-              Continue now
+              {t('fast.continueNow')}
             </button>
             <button type="button" className="btn" onClick={() => void openExternal(run.weblink)}>
               <ExternalLink size={13} />
-              Open the run
+              {t('fast.openRun')}
             </button>
           </div>
         }
@@ -601,7 +630,7 @@ function HeldCard({
         }}
       >
         <ShieldAlert size={12} />
-        Speedrun.com has already been told. This pause only exists so you can see what happened.
+        {t('fast.alreadyTold')}
       </div>
     </div>
   );

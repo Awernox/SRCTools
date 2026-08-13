@@ -22,11 +22,12 @@ import {
 } from 'lucide-react';
 
 import { Badge, Spinner, Tooltip, type MenuEntry } from '../components/ui';
-import { formatRelative, videoStatusInfo } from '../format';
+import { formatRelative, plural, runStatusLabel, videoStatusInfo } from '../format';
+import { t as translate, useT, type Translate } from '../i18n';
 import { copyToClipboard, openExternal } from '../open';
 import { useApp } from '../store/app';
 import { useModeration } from '../store/moderation';
-import { QUEUE_COLUMNS, useQueue, worstStatus, type SortKey } from '../store/queue';
+import { QUEUE_COLUMNS, useQueue, worstStatus, type QueueColumn, type SortKey } from '../store/queue';
 import { useSession } from '../store/session';
 import type { RunSummary, VideoStatus } from '../types';
 
@@ -38,6 +39,7 @@ interface QueueTableProps {
 }
 
 export function QueueTable({ runs, onOpen, onContextMenu, onReject }: QueueTableProps) {
+  const t = useT();
   const scroller = useRef<HTMLDivElement | null>(null);
 
   const selected = useQueue((state) => state.selected);
@@ -96,9 +98,9 @@ export function QueueTable({ runs, onOpen, onContextMenu, onReject }: QueueTable
             data-sortable="true"
             style={column.align === 'right' ? { justifyContent: 'flex-end' } : undefined}
             onClick={() => sortBy(column.id)}
-            title={`Sort by ${column.label.toLowerCase()}`}
+            title={t('queue.sortBy', { column: t(column.labelKey) })}
           >
-            {column.label}
+            {t(column.labelKey)}
             <SortIcon active={sortKey === column.id} ascending={sortAsc} />
           </button>
         ))}
@@ -146,7 +148,7 @@ interface RowProps {
   top: number;
   height: number;
   template: string;
-  columns: readonly { id: SortKey; label: string; align?: 'right' }[];
+  columns: readonly QueueColumn[];
   status: VideoStatus | null;
   duplicateCount: number;
   selected: boolean;
@@ -175,6 +177,7 @@ function Row({
   onRange,
   onContextMenu,
 }: RowProps) {
+  const t = useT();
   const focus = useQueue((state) => state.focus);
 
   return (
@@ -214,7 +217,7 @@ function Row({
             type="checkbox"
             className="checkbox"
             checked={selected}
-            aria-label={`Select run by ${run.playerLabel}`}
+            aria-label={t('queue.selectRun', { player: run.playerLabel })}
             onChange={() => onToggle(run.id)}
             onClick={(event) => event.stopPropagation()}
           />
@@ -248,6 +251,7 @@ function Cell({
   status: VideoStatus | null;
   duplicateCount: number;
 }) {
+  const t = useT();
   const className = align === 'right' ? 'vcell vcell--right' : 'vcell';
 
   switch (column) {
@@ -264,12 +268,12 @@ function Cell({
           {run.gameName ?? <span className="absent">—</span>}
           {duplicateCount > 0 && (
             <Tooltip
-              label={`Shares a video with ${duplicateCount} other run${duplicateCount === 1 ? '' : 's'}`}
-              detail="A flag only. Re-uploads and multi-category runs legitimately share a link."
+              label={t('queue.dup.label', { runs: plural(duplicateCount, 'run') })}
+              detail={t('queue.dup.detail')}
             >
               <span style={{ marginLeft: 6 }}>
                 <Badge tone="warn" small>
-                  dup
+                  {t('queue.dup')}
                 </Badge>
               </span>
             </Tooltip>
@@ -317,7 +321,7 @@ function Cell({
 
     case 'submitted':
       return (
-        <span className={className} title={run.submitted ?? 'No submission date'}>
+        <span className={className} title={run.submitted ?? t('queue.noSubmitDate')}>
           {formatRelative(run.submitted)}
         </span>
       );
@@ -326,7 +330,7 @@ function Cell({
       return (
         <span className={className}>
           <Badge tone={run.status === 'new' ? 'info' : 'neutral'} small>
-            {run.status === 'new' ? 'Pending' : run.status}
+            {runStatusLabel(run.status)}
           </Badge>
         </span>
       );
@@ -341,18 +345,20 @@ function Cell({
  * look is not a fact about the run.
  */
 function VideoBadge({ run, status }: { run: RunSummary; status: VideoStatus | null }) {
+  const t = useT();
+
   if (run.videoUrls.length === 0) {
     return (
       <Tooltip
-        label={run.videoText ? 'Text instead of a link' : 'No video submitted'}
+        label={run.videoText ? t('queue.video.textOnly') : t('queue.video.missing')}
         detail={
           run.videoText
-            ? `The runner wrote: “${run.videoText}”. There is no URL to check.`
-            : 'This run has no video link. Whether that matters depends on the game’s rules.'
+            ? t('queue.video.textOnlyHint', { text: run.videoText })
+            : t('queue.video.missingHint')
         }
       >
         <Badge tone="unknown" small dot>
-          {run.videoText ? 'Text' : 'None'}
+          {run.videoText ? t('queue.video.textBadge') : t('common.none')}
         </Badge>
       </Tooltip>
     );
@@ -360,10 +366,7 @@ function VideoBadge({ run, status }: { run: RunSummary; status: VideoStatus | nu
 
   if (status === null) {
     return (
-      <Tooltip
-        label="Not checked"
-        detail="SRCTools has not verified this link yet. That says nothing about the video."
-      >
+      <Tooltip label={t('video.notChecked')} detail={t('queue.video.notCheckedHint')}>
         <Badge tone="unknown" small>
           —
         </Badge>
@@ -386,17 +389,24 @@ function SortIcon({ active, ascending }: { active: boolean; ascending: boolean }
   return ascending ? <ArrowUp size={11} /> : <ArrowDown size={11} />;
 }
 
-/** Right-click entries for a run row. */
+/**
+ * Right-click entries for a run row.
+ *
+ * A plain function, not a component, so it reads the catalogue through the
+ * store-level `translate` rather than a hook. The menu is built at the moment
+ * of the click, which is late enough for that to be the current language.
+ */
 export function rowMenu(run: RunSummary, onInspect: () => void, onReject: () => void): MenuEntry[] {
+  const t: Translate = translate;
   const moderation = useModeration.getState();
   const entries: MenuEntry[] = [
-    { heading: run.gameName ?? 'Run' },
-    { label: 'Inspect run', icon: <Eye size={13} />, onSelect: onInspect, hint: 'enter' },
+    { heading: run.gameName ?? t('queue.row.heading') },
+    { label: t('queue.row.inspect'), icon: <Eye size={13} />, onSelect: onInspect, hint: 'enter' },
   ];
 
   if (run.videoUrls.length > 0) {
     entries.push({
-      label: 'Open video',
+      label: t('queue.row.openVideo'),
       icon: <Video size={13} />,
       onSelect: () => void openExternal(run.videoUrls[0]),
       hint: 'v',
@@ -405,7 +415,7 @@ export function rowMenu(run: RunSummary, onInspect: () => void, onReject: () => 
 
   if (run.weblink) {
     entries.push({
-      label: 'Open on Speedrun.com',
+      label: t('queue.row.openSrc'),
       icon: <ExternalLink size={13} />,
       onSelect: () => void openExternal(run.weblink),
       hint: 'o',
@@ -414,21 +424,21 @@ export function rowMenu(run: RunSummary, onInspect: () => void, onReject: () => 
 
   entries.push(
     {
-      label: 'Copy run id',
+      label: t('queue.row.copyId'),
       icon: <Copy size={13} />,
-      onSelect: () => void copyToClipboard(run.id, 'Run id copied'),
+      onSelect: () => void copyToClipboard(run.id, t('queue.row.idCopied')),
     },
     { separator: true },
     {
-      label: 'Verify run',
+      label: t('queue.row.verify'),
       icon: <Check size={13} />,
       onSelect: () => void moderation.verify(run),
       hint: 'a',
     },
-    { label: 'Reject run…', icon: <Ban size={13} />, onSelect: onReject, hint: 'r' },
+    { label: t('queue.row.reject'), icon: <Ban size={13} />, onSelect: onReject, hint: 'r' },
     { separator: true },
     {
-      label: 'Delete permanently…',
+      label: t('queue.row.delete'),
       icon: <Trash2 size={13} />,
       danger: true,
       onSelect: () => void moderation.remove(run),
