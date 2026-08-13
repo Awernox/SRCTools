@@ -331,4 +331,4 @@ behind the video-status taxonomy.
 MIT.
 
 SRCTools is an independent project. It is not affiliated with, endorsed by, or
-operated by Speedrun.com
+operated by Speedrun.com!
