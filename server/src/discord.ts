@@ -96,15 +96,14 @@ export function buildEmbed(kind: FeedKind, run: RunSummary): DiscordEmbed {
     };
   }
 
-  const fields = run.rejectionReason
-    ? [{ name: "Reason", value: `: ${safe(run.rejectionReason, 1022)}`, inline: false }]
-    : undefined;
+  const rejectionReason = run.rejectionReason
+    ? `\nReason: ${safe(run.rejectionReason, 1016)}`
+    : "";
   return {
     title: "❌ Run rejected",
     url: run.runUrl,
-    description: `${map} in ${compactTime} by ${runner}`,
+    description: `${map} in ${compactTime} by ${runner}${rejectionReason}`,
     color: 0xed4245,
-    ...(fields ? { fields } : {}),
   };
 }
 

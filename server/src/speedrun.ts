@@ -192,7 +192,9 @@ export function normalizeRun(run: RawRun, variables: RawVariable[] = []): RunSum
   const category = embeddedObject(run.category);
   const level = embeddedObject(run.level);
   const gameId = resourceId(run.game);
-  const categoryName = withSubcategories(stringAt(category, "name"), run.values, variables);
+  const baseCategory = stringAt(category, "name");
+  const subcategories = subcategoryLabels(run.values, variables);
+  const categoryName = [baseCategory, ...subcategories].filter(isString).join(" ") || null;
   const secondsRaw = run.times?.primary_t;
   const primarySeconds =
     typeof secondsRaw === "number" && Number.isFinite(secondsRaw) && secondsRaw > 0
@@ -208,7 +210,7 @@ export function normalizeRun(run: RawRun, variables: RawVariable[] = []): RunSum
       stringAt(game, "abbreviation") ??
       gameId,
     categoryName,
-    mapName: stringAt(level, "name") ?? categoryName,
+    mapName: stringAt(level, "name") ?? (subcategories.join(" ") || baseCategory),
     runner: playerNames(run.players).join(", ") || "Unknown runner",
     primarySeconds,
     timeDisplay: primarySeconds === null ? null : formatDuration(primarySeconds),
@@ -218,11 +220,10 @@ export function normalizeRun(run: RawRun, variables: RawVariable[] = []): RunSum
   };
 }
 
-function withSubcategories(
-  category: string | null,
+function subcategoryLabels(
   selected: Record<string, unknown> | undefined,
   variables: RawVariable[],
-): string | null {
+): string[] {
   const labels: string[] = [];
   if (selected) {
     for (const variable of variables) {
@@ -236,7 +237,7 @@ function withSubcategories(
       if (label) labels.push(label);
     }
   }
-  return [category, ...labels].filter(isString).join(" ") || null;
+  return labels;
 }
 
 function embeddedObject(value: unknown): ApiRecord | null {

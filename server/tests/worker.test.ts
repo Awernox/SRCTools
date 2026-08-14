@@ -77,11 +77,9 @@ test("builds the requested compact rejected embed", () => {
   assert.equal(rejected.url, run.runUrl);
   assert.equal(
     rejected.description,
-    "Speedrun Mood in 1m 22s 111ms by 337Short337",
+    "Speedrun Mood in 1m 22s 111ms by 337Short337\nReason: test",
   );
-  assert.deepEqual(rejected.fields, [
-    { name: "Reason", value: ": test", inline: false },
-  ]);
+  assert.equal(rejected.fields, undefined);
   assert.doesNotMatch(JSON.stringify(rejected), /View run/);
 });
 
@@ -262,10 +260,37 @@ test("adds Speedrun.com subcategory labels to a full-game category", () => {
   );
 
   assert.equal(run.categoryName, "Speedrun ABH%");
-  assert.equal(run.mapName, "Speedrun ABH%");
+  assert.equal(run.mapName, "ABH%");
   assert.equal(
     buildEmbed("newRun", run).description,
-    "Speedrun ABH% in 0m 1s 745ms by depressedAngel",
+    "ABH% in 0m 1s 745ms by depressedAngel",
+  );
+});
+
+test("uses only the subcategory as the compact webhook map", () => {
+  const variables: RawVariable[] = [
+    {
+      id: "variable-mode",
+      "is-subcategory": true,
+      values: { values: { "value-mood": { label: "Mood" } } },
+    },
+  ];
+  const run = normalizeRun(
+    {
+      ...rawRun,
+      level: null,
+      values: { "variable-mode": "value-mood" },
+      times: { primary_t: 71.111 },
+      status: { status: "rejected", reason: "test" },
+    },
+    variables,
+  );
+
+  assert.equal(run.categoryName, "Speedrun Mood");
+  assert.equal(run.mapName, "Mood");
+  assert.equal(
+    buildEmbed("rejected", run).description,
+    "Mood in 1m 11s 111ms by 337Short337\nReason: test",
   );
 });
 
