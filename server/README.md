@@ -7,7 +7,7 @@ Worker повторяет существующую watcher-логику SRCTools
 - получает владельца API-ключа через `GET /profile`;
 - получает модерируемые игры через `GET /games?moderator=...`;
 - опрашивает глобальные feed `status=new`, `status=verified`, `status=rejected`;
-- фильтрует их по играм этого модератора;
+- фильтрует их строго по Speedrun.com game ID: Run pro (`o1yj25r1`) и Bhop pro (`268q8o6p`);
 - берёт ссылку run только из поля Speedrun.com `weblink`;
 - берёт карту из embedded `level`, игрока из embedded `players`, время из `times.primary_t`;
 - первую страницу каждого feed сохраняет как baseline и не отправляет старые события;
@@ -26,9 +26,9 @@ Worker повторяет существующую watcher-логику SRCTools
 
 | Variable | Default | Значение |
 | --- | --- | --- |
-| `CHECK_INTERVAL_SECONDS` | `30` | Интервал 20-3600 секунд |
+| `CHECK_INTERVAL_SECONDS` | `6` | Интервал 5-3600 секунд |
 | `MONITORED_EVENTS` | `new,verified,rejected` | Любая комбинация этих трёх значений через запятую |
-| `MONITORED_GAME_IDS` | пусто | Ограничение конкретными ID игр; пусто = все модерируемые игры |
+| `MONITORED_GAME_IDS` | `o1yj25r1,268q8o6p` | Можно сузить scope до одной из этих игр. Другие game ID запрещены |
 | `PORT` | `3000` | Railway задаёт автоматически, вручную там не добавлять |
 | `RAILWAY_VOLUME_MOUNT_PATH` | `./data` | Railway задаёт автоматически после подключения Volume |
 
@@ -57,7 +57,7 @@ Invoke-RestMethod http://localhost:3000/health
 ```text
 [Worker] Checking Speedrun.com...
 [Worker] Found 0 new event(s)
-[Worker] Next check in 30s
+[Worker] Next check in 6s
 ```
 
 ## Railway Deployment
@@ -67,7 +67,7 @@ Invoke-RestMethod http://localhost:3000/health
 3. Выбрать `Awernox/SRCTools` и нужную ветку.
 4. В Service Settings установить **Root Directory**: `/server`.
 5. Railway определит Node по `server/package.json`. Build command: `npm run build`; Start command: `node dist/index.js`. Обычно Railpack возьмёт их автоматически, но значения можно задать явно.
-6. В Variables добавить `DISCORD_WEBHOOK_URL`, `SPEEDRUN_API_KEY`, `CHECK_INTERVAL_SECONDS=30`, `MONITORED_EVENTS=new,verified,rejected`. `PORT` не добавлять.
+6. В Variables добавить `DISCORD_WEBHOOK_URL`, `SPEEDRUN_API_KEY`, `CHECK_INTERVAL_SECONDS=6`, `MONITORED_EVENTS=new,verified,rejected`, `MONITORED_GAME_IDS=o1yj25r1,268q8o6p`. `PORT` не добавлять.
 7. В сервисе открыть Volumes -> Add Volume. Mount Path: `/app/data`. Worker автоматически увидит `RAILWAY_VOLUME_MOUNT_PATH` и положит туда `srctools-worker.sqlite`.
 8. Оставить **одну replica**. SQLite Volume нельзя безопасно использовать несколькими worker-процессами, и несколько replicas создали бы несколько polling loops.
 9. В Deploy settings задать Healthcheck Path `/health`, Restart Policy `Always` и Draining/Shutdown period не меньше 30 секунд. `Always` доступен на платных планах.
@@ -78,7 +78,7 @@ Invoke-RestMethod http://localhost:3000/health
 ## Как проверить работу 24/7
 
 1. В Railway открыть Service -> Deployments -> активный deployment -> View Logs.
-2. Убедиться, что строки `Checking Speedrun.com` и `Next check in 30s` продолжают появляться.
+2. Убедиться, что строки `Checking Speedrun.com` и `Next check in 6s` продолжают появляться. При обновлении scope лог отдельно перечисляет `Run pro (o1yj25r1)` и `Bhop pro (268q8o6p)`.
 3. `/health` показывает `status` (`starting`, `ok` или `degraded`), `lastCheckAt`, `lastSuccessAt`, `consecutiveFailures`, `scopedGames`, `pendingWebhooks`, `failedWebhooks` и последнюю ошибку Discord. HTTP 200 означает, что процесс жив; поле `status` и данные worker показывают состояние polling.
 4. После baseline добавить тестовый настоящий run в модерируемую игру либо дождаться нового run. В логах появится `Found 1 new event(s)` и `[Discord] Webhook sent`.
 5. Не удалять Volume при redeploy: именно там находится состояние deduplication.

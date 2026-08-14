@@ -306,3 +306,34 @@ test("uses Railway's PORT environment variable", () => {
   });
   assert.equal(config.port, 45678);
 });
+
+test("defaults to Run pro, Bhop pro and a six-second interval", () => {
+  const config = loadConfig({
+    DISCORD_WEBHOOK_URL: "https://discord.com/api/webhooks/123456789012345678/abcdefghijklmnopqrstuvwxyz",
+    SPEEDRUN_API_KEY: "test-key",
+  });
+  assert.equal(config.checkIntervalMs, 6_000);
+  assert.deepEqual([...config.monitoredGameIds].sort(), ["268q8o6p", "o1yj25r1"]);
+});
+
+test("MONITORED_GAME_IDS can narrow but cannot expand the allowed scope", () => {
+  const base = {
+    DISCORD_WEBHOOK_URL: "https://discord.com/api/webhooks/123456789012345678/abcdefghijklmnopqrstuvwxyz",
+    SPEEDRUN_API_KEY: "test-key",
+  };
+  const narrowed = loadConfig({ ...base, MONITORED_GAME_IDS: "268q8o6p" });
+  assert.deepEqual([...narrowed.monitoredGameIds], ["268q8o6p"]);
+  assert.throws(
+    () => loadConfig({ ...base, MONITORED_GAME_IDS: "some_other_game" }),
+    /may only contain Run pro/,
+  );
+});
+
+test("CHECK_INTERVAL_SECONDS still overrides the six-second default", () => {
+  const config = loadConfig({
+    DISCORD_WEBHOOK_URL: "https://discord.com/api/webhooks/123456789012345678/abcdefghijklmnopqrstuvwxyz",
+    SPEEDRUN_API_KEY: "test-key",
+    CHECK_INTERVAL_SECONDS: "12",
+  });
+  assert.equal(config.checkIntervalMs, 12_000);
+});

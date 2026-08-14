@@ -10,12 +10,18 @@ const DISCORD_HOSTS = new Set([
   "canary.discord.com",
 ]);
 
+export const ALLOWED_GAMES = new Map([
+  ["o1yj25r1", "Run pro"],
+  ["268q8o6p", "Bhop pro"],
+] as const);
+export type AllowedGameId = "o1yj25r1" | "268q8o6p";
+
 export interface WorkerConfig {
   discordWebhookUrl: string;
   speedrunApiKey: string;
   checkIntervalMs: number;
   monitoredEvents: ReadonlySet<FeedKind>;
-  monitoredGameIds: ReadonlySet<string> | null;
+  monitoredGameIds: ReadonlySet<string>;
   stateFile: string;
   port: number;
 }
@@ -91,12 +97,20 @@ function events(raw: string | undefined): ReadonlySet<FeedKind> {
   return parsed;
 }
 
-function gameIds(raw: string | undefined): ReadonlySet<string> | null {
+function gameIds(raw: string | undefined): ReadonlySet<string> {
   const ids = (raw ?? "")
     .split(",")
     .map((value) => value.trim())
     .filter(Boolean);
-  return ids.length === 0 ? null : new Set(ids);
+  if (ids.length === 0) return new Set(ALLOWED_GAMES.keys());
+  for (const id of ids) {
+    if (!ALLOWED_GAMES.has(id as AllowedGameId)) {
+      throw new Error(
+        `MONITORED_GAME_IDS may only contain Run pro (o1yj25r1) and Bhop pro (268q8o6p). Received '${id}'.`,
+      );
+    }
+  }
+  return new Set(ids);
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): WorkerConfig {
@@ -105,7 +119,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): WorkerConfig {
   return {
     discordWebhookUrl: discordWebhook(required(env, "DISCORD_WEBHOOK_URL")),
     speedrunApiKey: required(env, "SPEEDRUN_API_KEY"),
-    checkIntervalMs: integer(env.CHECK_INTERVAL_SECONDS, 30, 20, 3600) * 1000,
+    checkIntervalMs: integer(env.CHECK_INTERVAL_SECONDS, 6, 5, 3600) * 1000,
     monitoredEvents: events(env.MONITORED_EVENTS),
     monitoredGameIds: gameIds(env.MONITORED_GAME_IDS),
     stateFile: path.join(dataDirectory, "srctools-worker.sqlite"),

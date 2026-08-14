@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import type { WorkerConfig } from "./config.js";
+import { ALLOWED_GAMES, type AllowedGameId, type WorkerConfig } from "./config.js";
 import { DiscordDeliveryError, DiscordWebhook } from "./discord.js";
 import { messageOf, sleep, SpeedrunClient } from "./speedrun.js";
 import { StateStore } from "./state.js";
@@ -20,6 +20,7 @@ const FEEDS: ReadonlyArray<{
 interface Scope {
   accountId: string;
   gameIds: ReadonlySet<string>;
+  games: ReadonlyArray<{ id: string; name: string }>;
   fingerprint: string;
   refreshedAt: number;
 }
@@ -149,20 +150,42 @@ export class Worker {
     const games = await this.speedrun.moderatedGames(profile.id, signal);
     const moderated = new Set(games.map((game) => game.id));
     const selected = this.config.monitoredGameIds;
-    const gameIds = selected === null
-      ? moderated
-      : new Set([...selected].filter((id) => moderated.has(id)));
+    const gameIds = new Set([...selected].filter((id) => moderated.has(id)));
+    const namesById = new Map(
+      games.map((game) => [
+        game.id,
+        typeof game.names?.international === "string"
+          ? game.names.international
+          : (ALLOWED_GAMES.get(game.id as AllowedGameId) ?? game.id),
+      ]),
+    );
+    const scopedGames = [...gameIds].map((id) => ({
+      id,
+      name: namesById.get(id) ?? ALLOWED_GAMES.get(id as AllowedGameId) ?? id,
+    }));
     const sorted = [...gameIds].sort();
     const fingerprint = createHash("sha256").update(sorted.join("\n")).digest("hex").slice(0, 16);
     this.scope = {
       accountId: profile.id,
       gameIds,
+      games: scopedGames,
       fingerprint,
       refreshedAt: Date.now(),
     };
-    console.log(`[Worker] Scope refreshed: ${gameIds.size} moderated game(s)`);
-    if (selected !== null && selected.size !== gameIds.size) {
-      console.warn("[Worker] Some MONITORED_GAME_IDS are not moderated by this account and were ignored.");
+    console.log(
+      `[Worker] Scope refreshed: ${gameIds.size} game(s): ${
+        scopedGames.length === 0
+          ? "none"
+          : scopedGames.map((game) => `${game.name} (${game.id})`).join(", ")
+      }`,
+    );
+    if (selected.size !== gameIds.size) {
+      const unavailable = [...selected]
+        .filter((id) => !moderated.has(id))
+        .map((id) => `${ALLOWED_GAMES.get(id as AllowedGameId) ?? id} (${id})`);
+      console.warn(
+        `[Worker] Selected game(s) not moderated by this account and ignored: ${unavailable.join(", ")}`,
+      );
     }
     return this.scope;
   }
