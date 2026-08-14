@@ -73,13 +73,13 @@ Invoke-RestMethod http://localhost:3000/health
 9. В Deploy settings задать Healthcheck Path `/health`, Restart Policy `Always` и Draining/Shutdown period не меньше 30 секунд. `Always` доступен на платных планах.
 10. Отключить Serverless/App Sleeping: worker должен оставаться persistent service.
 11. Нажать Deploy. В deployment logs должны появиться `[Health] Listening`, `[Worker] Started`, `Scope refreshed` и циклы проверки.
-12. При необходимости создать Public Domain и проверить `https://<domain>/health`. Railway использует health check при deployment, но не как постоянный uptime-monitor; для непрерывной проверки подойдёт внешний мониторинг `/health`.
+12. При необходимости создать Public Domain и проверить `https://<domain>/health`. `/health` является liveness endpoint и возвращает HTTP 200 сразу после запуска HTTP-сервера, даже пока первый poll ещё выполняется. `/ready` является отдельным readiness endpoint и возвращает 503 до первой успешной проверки или если worker стал stale. Railway Healthcheck Path нужно оставить `/health`, не `/ready`.
 
 ## Как проверить работу 24/7
 
 1. В Railway открыть Service -> Deployments -> активный deployment -> View Logs.
 2. Убедиться, что строки `Checking Speedrun.com` и `Next check in 30s` продолжают появляться.
-3. `/health` показывает `lastCheckAt`, `lastSuccessAt`, `consecutiveFailures`, `scopedGames`, `pendingWebhooks`, `failedWebhooks` и последнюю ошибку Discord.
+3. `/health` показывает `status` (`starting`, `ok` или `degraded`), `lastCheckAt`, `lastSuccessAt`, `consecutiveFailures`, `scopedGames`, `pendingWebhooks`, `failedWebhooks` и последнюю ошибку Discord. HTTP 200 означает, что процесс жив; поле `status` и данные worker показывают состояние polling.
 4. После baseline добавить тестовый настоящий run в модерируемую игру либо дождаться нового run. В логах появится `Found 1 new event(s)` и `[Discord] Webhook sent`.
 5. Не удалять Volume при redeploy: именно там находится состояние deduplication.
 

@@ -5,6 +5,7 @@ import path from "node:path";
 import { test } from "node:test";
 
 import { buildEmbed } from "../src/discord.js";
+import { loadConfig } from "../src/config.js";
 import { closeServer, startHealthServer } from "../src/health.js";
 import { normalizeRun } from "../src/speedrun.js";
 import { StateStore } from "../src/state.js";
@@ -201,7 +202,48 @@ test("serves a live health endpoint", async () => {
     const body = (await response.json()) as { status: string; worker: { scopedGames: number } };
     assert.equal(body.status, "ok");
     assert.equal(body.worker.scopedGames, 2);
+
+    const ready = await fetch(`http://127.0.0.1:${address.port}/ready`);
+    assert.equal(ready.status, 200);
   } finally {
     await closeServer(server);
   }
+});
+
+test("health is available before the first polling cycle", async () => {
+  const now = new Date().toISOString();
+  const server = await startHealthServer(0, 30_000, () => ({
+    startedAt: now,
+    lastCheckAt: null,
+    lastSuccessAt: null,
+    lastError: null,
+    consecutiveFailures: 0,
+    checking: true,
+    scopedGames: 0,
+    pendingWebhooks: 0,
+    failedWebhooks: 0,
+    lastDeliveryError: null,
+    nextCheckAt: null,
+  }));
+  try {
+    const address = server.address();
+    assert.ok(address && typeof address === "object");
+    const health = await fetch(`http://127.0.0.1:${address.port}/health`);
+    assert.equal(health.status, 200);
+    assert.equal((await health.json()).status, "starting");
+
+    const ready = await fetch(`http://127.0.0.1:${address.port}/ready`);
+    assert.equal(ready.status, 503);
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test("uses Railway's PORT environment variable", () => {
+  const config = loadConfig({
+    DISCORD_WEBHOOK_URL: "https://discord.com/api/webhooks/123456789012345678/abcdefghijklmnopqrstuvwxyz",
+    SPEEDRUN_API_KEY: "test-key",
+    PORT: "45678",
+  });
+  assert.equal(config.port, 45678);
 });

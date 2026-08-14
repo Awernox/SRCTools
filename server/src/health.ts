@@ -8,7 +8,7 @@ export async function startHealthServer(
   snapshot: () => WorkerHealth,
 ): Promise<Server> {
   const server = createServer((request, response) => {
-    if (request.method !== "GET" || request.url !== "/health") {
+    if (request.method !== "GET" || (request.url !== "/health" && request.url !== "/ready")) {
       response.writeHead(404, { "Content-Type": "application/json" });
       response.end(JSON.stringify({ status: "not_found" }));
       return;
@@ -16,17 +16,18 @@ export async function startHealthServer(
 
     const worker = snapshot();
     const staleAfter = Math.max(5 * 60_000, checkIntervalMs * 5);
-    const stale =
+    const notReady =
       worker.lastSuccessAt === null ||
       Date.now() - Date.parse(worker.lastSuccessAt) > staleAfter;
-    const degraded = stale || worker.failedWebhooks > 0;
-    // A historical failed outbox row stays visible in the response body, but it
-    // must not make every later Railway deployment fail its readiness check.
-    response.writeHead(stale ? 503 : 200, {
+    const degraded = notReady || worker.failedWebhooks > 0 || worker.lastError !== null;
+    const readiness = request.url === "/ready";
+    const statusCode = readiness && notReady ? 503 : 200;
+    const status = notReady ? "starting" : degraded ? "degraded" : "ok";
+    response.writeHead(statusCode, {
       "Content-Type": "application/json",
       "Cache-Control": "no-store",
     });
-    response.end(JSON.stringify({ status: degraded ? "degraded" : "ok", worker }));
+    response.end(JSON.stringify({ status, worker }));
   });
 
   await new Promise<void>((resolve, reject) => {
@@ -36,7 +37,7 @@ export async function startHealthServer(
       resolve();
     });
   });
-  console.log(`[Health] Listening on 0.0.0.0:${port}/health`);
+  console.log(`[Health] Listening on 0.0.0.0:${port} (/health, /ready)`);
   return server;
 }
 
