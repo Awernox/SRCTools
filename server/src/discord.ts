@@ -91,24 +91,18 @@ export function buildEmbed(kind: FeedKind, run: RunSummary): DiscordEmbed {
     return {
       title: "✅ Run verified",
       url: run.runUrl,
-      description: `[run verified](${run.runUrl})`,
+      description: `${map} in ${compactTime} by ${runner}`,
       color: 0x57f287,
-      fields: [
-        { name: "Game", value: safe(run.gameName ?? "Unknown game", 1024), inline: false },
-        { name: "Runner", value: runner, inline: false },
-        { name: "Map", value: map, inline: false },
-        { name: "Time", value: exactTime, inline: false },
-      ],
     };
   }
 
   const fields = run.rejectionReason
-    ? [{ name: "Reason", value: safe(run.rejectionReason, 1024), inline: false }]
+    ? [{ name: "Reason", value: `: ${safe(run.rejectionReason, 1022)}`, inline: false }]
     : undefined;
   return {
     title: "❌ Run rejected",
     url: run.runUrl,
-    description: `${map} in ${compactTime} by ${runner}\n\n[View run](${run.runUrl})`,
+    description: `${map} in ${compactTime} by ${runner}`,
     color: 0xed4245,
     ...(fields ? { fields } : {}),
   };

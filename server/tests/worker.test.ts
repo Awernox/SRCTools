@@ -39,7 +39,7 @@ test("normalizes the existing Speedrun.com embed fields", () => {
   assert.equal(run.runUrl, "https://www.speedrun.com/run/abc");
 });
 
-test("builds New Run and verified embeds with clickable run URLs", () => {
+test("builds compact New Run and verified embeds with clickable titles", () => {
   const run = normalizeRun(rawRun);
   const fresh = buildEmbed("newRun", run);
   assert.equal(fresh.title, "🏆 New Run");
@@ -49,14 +49,40 @@ test("builds New Run and verified embeds with clickable run URLs", () => {
 
   const verified = buildEmbed("approved", {
     ...run,
-    primarySeconds: 7342.022,
-    timeDisplay: "2:02:22.022",
+    mapName: "Speedrun Mood",
+    primarySeconds: 82.111,
+    timeDisplay: "1:22.111",
   });
   assert.equal(verified.title, "✅ Run verified");
   assert.equal(verified.url, run.runUrl);
-  assert.deepEqual(verified.fields?.map((field) => field.name), ["Game", "Runner", "Map", "Time"]);
-  assert.equal(verified.fields?.[3]?.value, "2:02:22.022");
-  assert.doesNotMatch(JSON.stringify(verified), /Category|Status|Video|No video link/);
+  assert.equal(
+    verified.description,
+    "Speedrun Mood in 1m 22s 111ms by 337Short337",
+  );
+  assert.equal(verified.fields, undefined);
+  assert.doesNotMatch(JSON.stringify(verified), /run verified|Game|Runner|Map|Time|View run/);
+});
+
+test("builds the requested compact rejected embed", () => {
+  const run = normalizeRun(rawRun);
+  const rejected = buildEmbed("rejected", {
+    ...run,
+    mapName: "Speedrun Mood",
+    primarySeconds: 82.111,
+    timeDisplay: "1:22.111",
+    rejectionReason: "test",
+  });
+
+  assert.equal(rejected.title, "❌ Run rejected");
+  assert.equal(rejected.url, run.runUrl);
+  assert.equal(
+    rejected.description,
+    "Speedrun Mood in 1m 22s 111ms by 337Short337",
+  );
+  assert.deepEqual(rejected.fields, [
+    { name: "Reason", value: ": test", inline: false },
+  ]);
+  assert.doesNotMatch(JSON.stringify(rejected), /View run/);
 });
 
 test("persists baselines and enqueues each event only once", () => {
