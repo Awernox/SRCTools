@@ -31,6 +31,15 @@ export interface RawRun {
     reason?: unknown;
     "verify-date"?: unknown;
   } | null;
+  values?: Record<string, unknown>;
+}
+
+export interface RawVariable {
+  id: string;
+  "is-subcategory"?: unknown;
+  values?: {
+    values?: Record<string, { label?: unknown }>;
+  } | null;
 }
 
 export interface RawGame {

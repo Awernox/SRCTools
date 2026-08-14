@@ -4,6 +4,7 @@ import type {
   RawGame,
   RawRun,
   RawUser,
+  RawVariable,
   RunSummary,
 } from "./types.js";
 
@@ -12,12 +13,17 @@ const RUN_EMBEDS = "game,category,level,players,platform,region";
 const REQUEST_TIMEOUT_MS = 20_000;
 const MAX_ATTEMPTS = 4;
 const MIN_REQUEST_GAP_MS = 650;
+const VARIABLES_CACHE_MS = 12 * 60 * 60_000;
 
 type ApiRecord = Record<string, unknown>;
 type RunStatus = "new" | "verified" | "rejected";
 
 export class SpeedrunClient {
   private nextRequestAt = 0;
+  private readonly variablesCache = new Map<
+    string,
+    { expiresAt: number; values: RawVariable[] }
+  >();
 
   constructor(private readonly apiKey: string) {}
 
@@ -34,7 +40,11 @@ export class SpeedrunClient {
     );
   }
 
-  async runs(status: RunStatus, signal: AbortSignal): Promise<RunSummary[]> {
+  async runs(
+    status: RunStatus,
+    gameIds: ReadonlySet<string>,
+    signal: AbortSignal,
+  ): Promise<RunSummary[]> {
     const order = status === "verified" ? "verify-date" : "submitted";
     const query = new URLSearchParams({
       status,
@@ -43,8 +53,32 @@ export class SpeedrunClient {
       embed: RUN_EMBEDS,
       _: Date.now().toString(),
     });
-    const runs = await this.collection<RawRun>(`/runs?${query.toString()}`, 20, signal);
-    return runs.map(normalizeRun);
+    const runs = (await this.collection<RawRun>(`/runs?${query.toString()}`, 20, signal)).filter(
+      (run) => resourceId(run.game) !== null && gameIds.has(resourceId(run.game) as string),
+    );
+    const variablesByGame = new Map<string, RawVariable[]>();
+    for (const gameId of new Set(runs.map((run) => resourceId(run.game)).filter(isString))) {
+      if (!runs.some((run) => resourceId(run.game) === gameId && hasValues(run.values))) continue;
+      variablesByGame.set(gameId, await this.variables(gameId, signal));
+    }
+    return runs.map((run) => {
+      const gameId = resourceId(run.game);
+      return normalizeRun(run, gameId === null ? [] : (variablesByGame.get(gameId) ?? []));
+    });
+  }
+
+  private async variables(gameId: string, signal: AbortSignal): Promise<RawVariable[]> {
+    const cached = this.variablesCache.get(gameId);
+    if (cached && cached.expiresAt > Date.now()) return cached.values;
+    const envelope = await this.request<ApiEnvelope<RawVariable[]>>(
+      `/games/${encodeURIComponent(gameId)}/variables`,
+      signal,
+    );
+    this.variablesCache.set(gameId, {
+      expiresAt: Date.now() + VARIABLES_CACHE_MS,
+      values: envelope.data,
+    });
+    return envelope.data;
   }
 
   private async collection<T>(path: string, limit: number, signal: AbortSignal): Promise<T[]> {
@@ -153,11 +187,12 @@ function isNonRetryableApiError(error: unknown): boolean {
     && !error.message.includes("HTTP 429");
 }
 
-export function normalizeRun(run: RawRun): RunSummary {
+export function normalizeRun(run: RawRun, variables: RawVariable[] = []): RunSummary {
   const game = embeddedObject(run.game);
   const category = embeddedObject(run.category);
   const level = embeddedObject(run.level);
   const gameId = resourceId(run.game);
+  const categoryName = withSubcategories(stringAt(category, "name"), run.values, variables);
   const secondsRaw = run.times?.primary_t;
   const primarySeconds =
     typeof secondsRaw === "number" && Number.isFinite(secondsRaw) && secondsRaw > 0
@@ -172,8 +207,8 @@ export function normalizeRun(run: RawRun): RunSummary {
       nestedString(game, "names", "international") ??
       stringAt(game, "abbreviation") ??
       gameId,
-    categoryName: stringAt(category, "name"),
-    mapName: stringAt(level, "name") ?? stringAt(category, "name"),
+    categoryName,
+    mapName: stringAt(level, "name") ?? categoryName,
     runner: playerNames(run.players).join(", ") || "Unknown runner",
     primarySeconds,
     timeDisplay: primarySeconds === null ? null : formatDuration(primarySeconds),
@@ -181,6 +216,27 @@ export function normalizeRun(run: RawRun): RunSummary {
     verifyDate: asString(run.status?.["verify-date"]),
     rejectionReason: cleanOptionalText(asString(run.status?.reason), 2000),
   };
+}
+
+function withSubcategories(
+  category: string | null,
+  selected: Record<string, unknown> | undefined,
+  variables: RawVariable[],
+): string | null {
+  const labels: string[] = [];
+  if (selected) {
+    for (const variable of variables) {
+      if (variable["is-subcategory"] !== true) continue;
+      const valueId = selected[variable.id];
+      if (typeof valueId !== "string") continue;
+      const label = cleanOptionalLine(
+        asString(variable.values?.values?.[valueId]?.label),
+        256,
+      );
+      if (label) labels.push(label);
+    }
+  }
+  return [category, ...labels].filter(isString).join(" ") || null;
 }
 
 function embeddedObject(value: unknown): ApiRecord | null {
@@ -217,6 +273,14 @@ function playerNames(value: unknown): string[] {
 
 function isRecord(value: unknown): value is ApiRecord {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isString(value: string | null): value is string {
+  return value !== null;
+}
+
+function hasValues(value: Record<string, unknown> | undefined): boolean {
+  return value !== undefined && Object.keys(value).length > 0;
 }
 
 function asString(value: unknown): string | null {

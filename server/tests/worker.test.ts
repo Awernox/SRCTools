@@ -9,7 +9,7 @@ import { loadConfig } from "../src/config.js";
 import { closeServer, startHealthServer } from "../src/health.js";
 import { normalizeRun } from "../src/speedrun.js";
 import { StateStore } from "../src/state.js";
-import type { RawRun, RunSummary } from "../src/types.js";
+import type { RawRun, RawVariable, RunSummary } from "../src/types.js";
 
 const rawRun: RawRun = {
   id: "run-1",
@@ -44,8 +44,8 @@ test("builds New Run and verified embeds with clickable run URLs", () => {
   const fresh = buildEmbed("newRun", run);
   assert.equal(fresh.title, "🏆 New Run");
   assert.equal(fresh.url, run.runUrl);
-  assert.match(fresh.description ?? "", /Niwa in 0m 17s 879ms by 337Short337/);
-  assert.match(fresh.description ?? "", /\[View run\]\(https:\/\/www\.speedrun\.com\/run\/abc\)/);
+  assert.equal(fresh.description, "Niwa in 0m 17s 879ms by 337Short337");
+  assert.doesNotMatch(fresh.description ?? "", /View run|`/);
 
   const verified = buildEmbed("approved", {
     ...run,
@@ -208,6 +208,39 @@ test("serves a live health endpoint", async () => {
   } finally {
     await closeServer(server);
   }
+});
+
+test("adds Speedrun.com subcategory labels to a full-game category", () => {
+  const variables: RawVariable[] = [
+    {
+      id: "variable-movement",
+      "is-subcategory": true,
+      values: {
+        values: {
+          "value-abh": { label: "ABH%" },
+        },
+      },
+    },
+  ];
+  const run = normalizeRun(
+    {
+      ...rawRun,
+      level: null,
+      values: { "variable-movement": "value-abh" },
+      times: { primary_t: 1.745 },
+      players: {
+        data: [{ id: "player-2", names: { international: "depressedAngel" } }],
+      },
+    },
+    variables,
+  );
+
+  assert.equal(run.categoryName, "Speedrun ABH%");
+  assert.equal(run.mapName, "Speedrun ABH%");
+  assert.equal(
+    buildEmbed("newRun", run).description,
+    "Speedrun ABH% in 0m 1s 745ms by depressedAngel",
+  );
 });
 
 test("health is available before the first polling cycle", async () => {

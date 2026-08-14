@@ -121,9 +121,7 @@ export class Worker {
     for (const feed of FEEDS) {
       if (!this.config.monitoredEvents.has(feed.kind)) continue;
       try {
-        const page = (await this.speedrun.runs(feed.status, signal)).filter(
-          (run) => run.gameId !== null && scope.gameIds.has(run.gameId),
-        );
+        const page = await this.speedrun.runs(feed.status, scope.gameIds, signal);
         found += this.state.applyFeedPage({
           accountId: scope.accountId,
           feedKey: `${scope.accountId}:${scope.fingerprint}:${feed.kind}`,

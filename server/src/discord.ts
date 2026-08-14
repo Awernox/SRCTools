@@ -82,7 +82,7 @@ export function buildEmbed(kind: FeedKind, run: RunSummary): DiscordEmbed {
     return {
       title: "🏆 New Run",
       url: run.runUrl,
-      description: `\`${inlineCode(`${map} in ${compactTime} by ${runner}`)}\`\n\n[View run](${run.runUrl})`,
+      description: `${map} in ${compactTime} by ${runner}`,
       color: 0x5865f2,
     };
   }
@@ -149,8 +149,4 @@ function safe(value: string, max: number): string {
     .join("")
     .trim()
     .slice(0, max);
-}
-
-function inlineCode(value: string): string {
-  return value.replaceAll("`", "'").replaceAll("\n", " ");
 }
