@@ -56,7 +56,7 @@ Invoke-RestMethod http://localhost:3000/health
 ```text
 [Worker] Checking Speedrun.com...
 [Worker] Found 0 new event(s)
-[Worker] Next check in 1s
+[Worker] Next check in 2s
 ```
 
 ## Railway Deployment
@@ -66,7 +66,7 @@ Invoke-RestMethod http://localhost:3000/health
 3. Выбрать `Awernox/SRCTools` и нужную ветку.
 4. В Service Settings установить **Root Directory**: `/server`.
 5. Railway определит Node по `server/package.json`. Build command: `npm run build`; Start command: `node dist/index.js`. Обычно Railpack возьмёт их автоматически, но значения можно задать явно.
-6. В Variables добавить `DISCORD_WEBHOOK_URL`, `SPEEDRUN_API_KEY`, `MONITORED_EVENTS=new,verified,rejected`, `MONITORED_GAME_IDS=o1yj25r1,268q8o6p`. `CHECK_INTERVAL_SECONDS` больше не используется, его можно удалить. `PORT` не добавлять.
+6. В Variables добавить `DISCORD_WEBHOOK_URL`, `SPEEDRUN_API_KEY`, `MONITORED_EVENTS=new,verified,rejected`, `MONITORED_GAME_IDS=o1yj25r1,268q8o6p`. `CHECK_INTERVAL_SECONDS` больше не используется, его можно удалить. Интервал опроса зафиксирован на 2 секунды. `PORT` не добавлять.
 7. В сервисе открыть Volumes -> Add Volume. Mount Path: `/app/data`. Worker автоматически увидит `RAILWAY_VOLUME_MOUNT_PATH` и положит туда `srctools-worker.sqlite`.
 8. Оставить **одну replica**. SQLite Volume нельзя безопасно использовать несколькими worker-процессами, и несколько replicas создали бы несколько polling loops.
 9. В Deploy settings задать Healthcheck Path `/health`, Restart Policy `Always` и Draining/Shutdown period не меньше 30 секунд. `Always` доступен на платных планах.
@@ -77,7 +77,7 @@ Invoke-RestMethod http://localhost:3000/health
 ## Как проверить работу 24/7
 
 1. В Railway открыть Service -> Deployments -> активный deployment -> View Logs.
-2. Убедиться, что строки `Checking Speedrun.com` и `Next check in 1s` продолжают появляться. При обновлении scope лог отдельно перечисляет `Run pro (o1yj25r1)` и `Bhop pro (268q8o6p)`.
+2. Убедиться, что строки `Checking Speedrun.com` и `Next check in 2s` продолжают появляться. При обновлении scope лог отдельно перечисляет `Run pro (o1yj25r1)` и `Bhop pro (268q8o6p)`.
 3. `/health` показывает `status` (`starting`, `ok` или `degraded`), `lastCheckAt`, `lastSuccessAt`, `consecutiveFailures`, `scopedGames`, `pendingWebhooks`, `failedWebhooks` и последнюю ошибку Discord. HTTP 200 означает, что процесс жив; поле `status` и данные worker показывают состояние polling.
 4. После baseline добавить тестовый настоящий run в модерируемую игру либо дождаться нового run. В логах появится `Found 1 new event(s)` и `[Discord] Webhook sent`.
 5. Не удалять Volume при redeploy: именно там находится состояние deduplication.
