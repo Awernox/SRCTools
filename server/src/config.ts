@@ -119,7 +119,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): WorkerConfig {
   return {
     discordWebhookUrl: discordWebhook(required(env, "DISCORD_WEBHOOK_URL")),
     speedrunApiKey: required(env, "SPEEDRUN_API_KEY"),
-    checkIntervalMs: integer(env.CHECK_INTERVAL_SECONDS, 6, 5, 3600) * 1000,
+    checkIntervalMs: 1_000,
     monitoredEvents: events(env.MONITORED_EVENTS),
     monitoredGameIds: gameIds(env.MONITORED_GAME_IDS),
     stateFile: path.join(dataDirectory, "srctools-worker.sqlite"),
