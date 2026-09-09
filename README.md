@@ -19,6 +19,8 @@ It is a **tool for a moderator, not a replacement for one.** Every automated
 check in this application produces information; none of them produce a verdict.
 There is no code path anywhere in SRCTools that approves or rejects a run
 without a human pressing a button.
+<img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/af1547bd-06c4-4071-a98b-a01c06652cc9" />
+
 
 ## Features
 
