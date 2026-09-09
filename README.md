@@ -171,35 +171,6 @@ change it.
 npm run build:windows
 ```
 
-Output lands in `src-tauri/target/release/`:
-
-| Path | What it is |
-| --- | --- |
-| `srctools.exe` | The standalone executable |
-| `bundle/nsis/SRCTools_1.0.0_x64-setup.exe` | NSIS installer (per-user, no admin rights) |
-| `bundle/msi/SRCTools_1.0.0_x64_en-US.msi` | MSI package, for deployment |
-
-`npm run build` does the same thing using whatever bundle targets
-`tauri.conf.json` lists.
-
-### All available commands
-
-| Command | What it does |
-| --- | --- |
-| `npm run dev` | Dev server + Tauri window, hot reload |
-| `npm run build` | Production build with the configured bundles |
-| `npm run build:windows` | Production build, NSIS + MSI explicitly |
-| `npm run typecheck` | `tsc --noEmit` over the whole frontend |
-| `npm run vite:build` | Typecheck, then build the frontend only |
-| `npm run icons` | Regenerate every icon size from `src-tauri/icons/icon.png` |
-
-Rust checks, from `src-tauri/`:
-
-```bash
-cargo check
-cargo clippy --all-targets
-```
-
 ## First launch
 
 SRCTools opens on a setup screen.
@@ -237,25 +208,6 @@ together or cleared together.
 ## Keyboard shortcuts
 
 Press `?` at any time for the live list, which reflects your own bindings.
-
-| Key | Action |
-| --- | --- |
-| `A` | Verify the focused run |
-| `R` | Reject (opens the reason dialog) |
-| `V` | Open the video |
-| `O` | Open the run on Speedrun.com |
-| `Enter` | Open the detail panel |
-| `Space` | Toggle selection |
-| `N` / `P` | Next / previous run |
-| `F` | Enter Fast Review |
-| `Esc` | Close, cancel, or leave Fast Review |
-| `Ctrl+A` | Select all |
-| `Ctrl+Shift+A` | Clear selection |
-| `Ctrl+R` | Refresh the queue |
-| `Ctrl+F` | Focus the search box |
-| `Ctrl+K` | Command palette |
-| `?` | This list |
-| `G` then `D` / `Q` / `H` / `S` / `,` | Go to Dashboard / Queue / History / Stats / Settings |
 
 Everything except `Esc` and `Ctrl+K` can be rebound under **Settings →
 Keyboard**.
@@ -319,8 +271,7 @@ C++* from the Visual Studio Installer and confirm with
 `rustup target list --installed` that `x86_64-pc-windows-msvc` is present.
 
 ## Licence
-
 MIT.
 
 SRCTools is an independent project. It is not affiliated with, endorsed by, or
-operated by Speedrun.com!
+operated by Speedrun.com
