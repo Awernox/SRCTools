@@ -4,10 +4,6 @@
   # SRCTools
 
   **An advanced Speedrun.com moderator toolkit for Windows.**
-
-  Queue triage, video validation, run analysis, bulk moderation and local
-  statistics — in one desktop application that never decides anything on your
-  behalf.
 </div>
 
 ---
@@ -319,12 +315,6 @@ WebView2 is missing or broken. Install the Evergreen Runtime from
 The MSVC C++ build tools are not installed. Install *Desktop development with
 C++* from the Visual Studio Installer and confirm with
 `rustup target list --installed` that `x86_64-pc-windows-msvc` is present.
-
-## Architecture
-
-See [ARCHITECTURE.md](ARCHITECTURE.md) for the module layout, the IPC contract,
-the database schema, the caching and rate-limiting strategy, and the reasoning
-behind the video-status taxonomy.
 
 ## Licence
 
